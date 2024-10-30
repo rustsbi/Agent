@@ -1,7 +1,11 @@
 # Agent
 RustSBI Specialized Domain Knowledge Quiz LLM
 
+## Demos
 
+[GPTs Demo 入口](https://chatgpt.com/g/g-ubp707Cke-rustsbi-development-expert-test)
+
+[QAnything Demo 入口](https://ai.youdao.com/saas/qanything/#/bots/129B009D611B4051/share)
 
 ## Domain Knowledge Sources
 
