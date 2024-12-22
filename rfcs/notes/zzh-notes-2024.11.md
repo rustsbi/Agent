@@ -26,11 +26,11 @@ curl -fsSL https://ollama.com/install.sh | sh
 
 在下载过程中我这里出现了两个warning
 
-![](./assets/zzh-November/1.png)
+![](../assets/zzh-November/1.png)
 
 第一个`WARNING`是说`systemd`服务没有开启，但是我看`PID 1`为`bash`，而不是`systemd`，这也导致执行`sudo systemctl start systemd` 会出现下图这样的错误，但我在搜索引擎上搜索到的都是说`wsl`经常出现这种问题，但是我看了这个服务器并不是`wsl`，所以这个没有解决，不过因为是`WARNING`最后服务也能正常跑。
 
-![](./assets/zzh-November/2.png)
+![](../assets/zzh-November/2.png)
 
 第二个`WARNING`是指系统无法检测到GPU。解决方法：  
 
@@ -213,13 +213,13 @@ streamlit run app.py
 
 点击网址进入到页面中
 
-![](./assets/zzh-November/3.png)
+![](../assets/zzh-November/3.png)
 
 ## 测试
 
 上面的代码使用Chromadb时不时会出现下面的报错，一直解决不了，
 
-![](./assets/zzh-November/4.png)
+![](../assets/zzh-November/4.png)
 
 最后改用faissdb来进行向量存储，faissdb依赖安装
 
@@ -373,27 +373,27 @@ else:
 
 测试结果如下
 
-![](./assets/zzh-November/5.png)
+![](../assets/zzh-November/5.png)
 
-![](./assets/zzh-November/6.png)
+![](../assets/zzh-November/6.png)
 
 对于之前所读RAG综述可以回答响应答案，下一步我们换一个pdf进行测试，使用
 
 [https://github.com/openxiangshan/xiangshan](https://github.com/openxiangshan/xiangshan) 中的Paper来进行测试。
 
-![](./assets/zzh-November/7.png)
+![](../assets/zzh-November/7.png)
 
 我们继续上传了进行测试，但是并没有得到想得到的答案，查看后台发现仍然使用的是刚刚上传的RAG综述论文，并没有使用新上传的论文，
 
-![](./assets/zzh-November/8.png)
+![](../assets/zzh-November/8.png)
 
 让我们重新关闭一下服务重新开始试一下。
 
-![](./assets/zzh-November/9.png)
+![](../assets/zzh-November/9.png)
 
 测试成功，回答结果与pdf内容相符，查看后台结果也为所给论文内容。
 
-![](./assets/zzh-November/10.png)
+![](../assets/zzh-November/10.png)
 
 ## 总结
 
