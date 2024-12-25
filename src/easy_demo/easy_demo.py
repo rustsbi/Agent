@@ -1,4 +1,3 @@
-# edited by kjn 12.24
 import hashlib
 import os
 import subprocess
