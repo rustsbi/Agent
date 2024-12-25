@@ -287,15 +287,15 @@ else:
 
 成功加载已有的解析数据：
 
-![load success](./assets/loading_success.png)
+![load success](/rfcs/assets/loading_success.png)
 
 旧的RAG助手输出，文字格式渲染有问题：
 
-![old output](./assets/old_rag_output.png)
+![old output](/rfcs/assets/old_rag_output.png)
 
 旧的输出和新的输出进行对比：
 
-![comparison](./assets/comparison_of_output.png)
+![comparison](/rfcs/assets/comparison_of_output.png)
 
 #### 未来工作
 

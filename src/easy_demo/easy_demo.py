@@ -1,7 +1,9 @@
+# edited by kjn 12.24
 import hashlib
 import os
 import subprocess
 import time
+import threading
 from markdown import markdown
 from pylatexenc.latex2text import LatexNodes2Text
 
@@ -146,16 +148,19 @@ if uploaded_file is not None:
     file_hash = hashlib.md5(uploaded_file.read()).hexdigest()
     uploaded_file.seek(0)  # 重置文件指针
 
-    file_path = f"files/{file_hash}.{uploaded_file.name.split('.')[-1]}"
-    db_path = "db"
-    embedding_path = f"db/{file_hash}.pkl"
-
+    # file_path = f"files/{file_hash}.{uploaded_file.name.split('.')[-1]}"
+    file_path = f"files/{uploaded_file.name}"
+    db_root = "db"
+    db_path = os.path.join(db_root, file_hash)  # 针对每个文件的独立子目录
+    embedding_path = os.path.join(db_path, 'index.pkl')
+    os.makedirs(db_path, exist_ok=True)
     embeddings = OllamaEmbeddings(base_url="http://localhost:11434", model="qwen:7b")
 
     # 检查向量数据库是否存在
     if os.path.exists(db_path) and os.path.exists(embedding_path):
         st.write("Loading existing vector database...")
-        st.session_state.vectorstore = FAISS.load_local(db_path, embeddings)
+        st.session_state.vectorstore = FAISS.load_local(db_path, embeddings,allow_dangerous_deserialization=True)
+        st.write("Done!")
     else:
         # 处理新上传的文件
         with st.status("Analyzing your document..."):
@@ -232,6 +237,8 @@ if uploaded_file is not None:
         with st.chat_message("assistant"):
             with st.spinner("Assistant is typing..."):
                 response = st.session_state.qa_chain(user_input)
+            
+            # 创建一个占位符，用于显示模拟输入效果
             message_placeholder = st.empty()
             full_response = ""
             for chunk in response["result"].split():
@@ -239,7 +246,10 @@ if uploaded_file is not None:
                 time.sleep(0.05)
                 # Add a blinking cursor to simulate typing
                 message_placeholder.markdown(full_response + "▌")
-            message_placeholder.markdown(full_response)
+            
+            # 清除之前的模拟输入效果，并显示最终的格式化回答
+            message_placeholder.empty()
+            message_placeholder.markdown(response["result"])
 
         chatbot_message = {"role": "assistant", "message": response["result"]}
         st.session_state.chat_history.append(chatbot_message)
