@@ -1,0 +1,11 @@
+2025-01-07 17:05:50,423 embedding texts number: 2.0
+2025-01-07 17:07:08,876 embedding texts number: 2.0
+2025-01-07 17:07:08,914 函数 aembed_documents 执行耗时: 0.04 秒
+2025-01-07 17:59:31,068 embedding texts number: 2.0
+2025-01-07 17:59:31,105 函数 aembed_documents 执行耗时: 0.04 秒
+2025-01-07 17:59:41,330 embedding texts number: 2.0
+2025-01-07 17:59:41,365 函数 aembed_documents 执行耗时: 0.03 秒
+2025-01-07 17:59:56,854 embedding texts number: 2.0
+2025-01-07 17:59:56,890 函数 aembed_documents 执行耗时: 0.04 秒
+2025-01-07 18:00:14,042 embedding texts number: 1.0
+2025-01-07 18:00:14,064 函数 aembed_documents 执行耗时: 0.02 秒
