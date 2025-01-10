@@ -1,7 +1,7 @@
 
 import sys
 import os
-
+import time
 # 获取当前脚本的绝对路径
 current_script_path = os.path.abspath(__file__)
 
@@ -29,7 +29,6 @@ def _process_query(query):
 class SBIEmbeddings(Embeddings):
     # 初始化请求embedding服务的url
     def __init__(self):
-        self.model_version = 'local_v20250107'
         self.url = f"http://{LOCAL_EMBED_SERVICE_URL}/embedding"
         self.session = requests.Session()
         super().__init__()
@@ -89,18 +88,117 @@ class SBIEmbeddings(Embeddings):
         # return self._get_embedding([text])['embeddings'][0]
         return self._get_embedding_sync([text])[0]
 
-    @property
-    def embed_version(self):
-        return self.model_version
-
-# 使用示例
-async def main():
+async def test_async_methods():
+    """测试异步方法"""
     embedder = SBIEmbeddings()
-    texts = ["text1"]  # 示例文本
+    
+    # 测试单个文本的embedding
+    debug_logger.info("\n测试异步单个文本embedding:")
+    single_text = "人工智能正在改变我们的生活方式。"
+    single_embedding = await embedder.aembed_query(single_text)
+    debug_logger.info(f"文本: {single_text}")
+    debug_logger.info(f"向量维度: {len(single_embedding)}")
+    
+    # 测试批量文本的embedding
+    debug_logger.info("\n测试异步批量文本embedding:")
+    texts = [
+        "深度学习是人工智能的一个重要分支。",
+        "自然语言处理技术正在不断进步。",
+        "机器学习算法可以从数据中学习规律。"
+    ]
+    
     embeddings = await embedder.aembed_documents(texts)
-    return embeddings
+    for text, embedding in zip(texts, embeddings):
+        debug_logger.info(f"文本: {text}")
+        debug_logger.info(f"向量维度: {len(embedding)}")
 
-if __name__ == '__main__':
-    embeddings = asyncio.run(main())
-    for embed in embeddings:
-        print(len(embed))
+
+def test_sync_methods():
+    """测试同步方法"""
+    embedder = SBIEmbeddings()
+    
+    # 测试单个文本的embedding
+    debug_logger.info("\n测试同步单个文本embedding:")
+    single_text = "这是一个测试文本。"
+    single_embedding = embedder.embed_query(single_text)
+    debug_logger.info(f"文本: {single_text}")
+    debug_logger.info(f"向量维度: {len(single_embedding)}")
+    
+    # 测试批量文本的embedding
+    debug_logger.info("\n测试同步批量文本embedding:")
+    texts = [
+        "第一个测试文本",
+        "第二个测试文本",
+        "第三个测试文本"
+    ]
+    embeddings = embedder.embed_documents(texts)
+    for text, embedding in zip(texts, embeddings):
+        debug_logger.info(f"文本: {text}")
+        debug_logger.info(f"向量维度: {len(embedding)}")
+
+
+def test_error_handling():
+    """测试错误处理"""
+    embedder = SBIEmbeddings()
+    
+    debug_logger.info("\n测试错误处理:")
+    # 测试空文本
+    try:
+        embedding = embedder.embed_query("")
+        debug_logger.info("空文本处理成功")
+    except Exception as e:
+        debug_logger.error(f"空文本处理失败: {str(e)}")
+    
+    # 测试None值
+    try:
+        embedding = embedder.embed_documents([None])
+        debug_logger.info("None值处理成功")
+    except Exception as e:
+        debug_logger.error(f"None值处理失败: {str(e)}")
+
+
+async def performance_test():
+    """性能测试"""
+    embedder = SBIEmbeddings()
+    
+    debug_logger.info("\n执行性能测试:")
+    # 准备测试数据
+    test_sizes = [10, 50, 100]
+    
+    for size in test_sizes:
+        texts = [f"这是第{i}个性能测试文本。" for i in range(size)]
+        
+        # 测试同步方法性能
+        start_time = time.time()
+        embeddings = embedder.embed_documents(texts)
+        sync_time = time.time() - start_time
+        debug_logger.info(f"同步处理 {size} 个文本耗时: {sync_time:.2f}秒")
+        
+        # 测试异步方法性能
+        start_time = time.time()
+        embeddings = await embedder.aembed_documents(texts)
+        async_time = time.time() - start_time
+        debug_logger.info(f"异步处理 {size} 个文本耗时: {async_time:.2f}秒")
+
+
+async def main():
+    """主测试函数"""
+    debug_logger.info(f"开始embedding客户端测试...")
+    
+    # 测试异步方法
+    await test_async_methods()
+    
+    # # 测试同步方法
+    # test_sync_methods()
+    
+    # # 测试错误处理
+    # test_error_handling()
+    
+    # # 执行性能测试
+    # await performance_test()
+    
+    debug_logger.info("embedding客户端测试完成")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

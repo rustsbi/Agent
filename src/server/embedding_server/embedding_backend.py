@@ -9,7 +9,7 @@ from src.configs.configs import LOCAL_EMBED_MODEL_PATH, LOCAL_EMBED_PATH, LOCAL_
 from src.utils.log_handler import debug_logger
 from transformers import AutoTokenizer
 
-class EmbeddingOnnxBackend:
+class EmbeddingBackend:
     def __init__(self, use_cpu: bool = False):
         # 初始化分词器
         self._tokenizer = AutoTokenizer.from_pretrained(EMBED_MODEL_PATH)
@@ -195,10 +195,11 @@ class EmbeddingOnnxBackend:
             return embeddings
     # 对给定queries
     def predict(self, queries, return_tokens_num=False):
+        print(queries)
         embeddings = self.encode(
             queries, batch_size=self.batch_size, normalize_to_unit=True, return_numpy=True, max_length=self.max_length,
             tokenizer=self._tokenizer,
             return_tokens_num=return_tokens_num
         )
-
+        print(embeddings.shape)
         return embeddings.tolist()

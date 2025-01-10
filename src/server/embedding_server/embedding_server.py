@@ -11,7 +11,7 @@ sys.path.append(root_dir)
 
 from sanic import Sanic
 from sanic.response import json
-from src.server.embedding_server.embedding_backend import EmbeddingOnnxBackend
+from src.server.embedding_server.embedding_backend import EmbeddingBackend
 from src.configs.configs import LOCAL_EMBED_MODEL_PATH, LOCAL_EMBED_THREADS
 from src.utils.general_utils import get_time_async
 import argparse
@@ -38,11 +38,11 @@ async def embedding(request):
 
     # onnx_backend: EmbeddingAsyncBackend = request.app.ctx.onnx_backend
     # onnx后端上下文在这里使用
-    onnx_backend: EmbeddingOnnxBackend = request.app.ctx.onnx_backend
+    onnx_backend: EmbeddingBackend = request.app.ctx.onnx_backend
     # result_data = await onnx_backend.embed_documents_async(texts)
     result_data = onnx_backend.predict(texts)
-    print("local embedding result number:", len(result_data), flush=True)
-    print("local embedding result:", result_data, flush=True)
+    # print("local embedding result number:", len(result_data), flush=True)
+    # print("local embedding result:", result_data, flush=True)
 
     return json(result_data)
 
@@ -53,7 +53,7 @@ async def setup_onnx_backend(app, loop):
     #                                              use_cpu=not args.use_gpu, num_threads=LOCAL_EMBED_THREADS)
     # onnx_backend 是在应用启动时被初始化并存储在上下文中的对象
     # 存储到应用上下文
-    app.ctx.onnx_backend = EmbeddingOnnxBackend(use_cpu=not args.use_gpu)
+    app.ctx.onnx_backend = EmbeddingBackend(use_cpu=not args.use_gpu)
 
 
 if __name__ == "__main__":
