@@ -2,7 +2,7 @@ import os
 
 current_script_path = os.path.abspath(__file__)
 root_path = os.path.dirname(os.path.dirname(os.path.dirname(current_script_path)))
-UPLOAD_ROOT_PATH = os.path.join(root_path, "QANY_DB", "content")
+UPLOAD_ROOT_PATH = os.path.join(root_path, "file_store")
 print("UPLOAD_ROOT_PATH:", UPLOAD_ROOT_PATH)
 
 LOCAL_EMBED_SERVICE_URL = "localhost:9001"
