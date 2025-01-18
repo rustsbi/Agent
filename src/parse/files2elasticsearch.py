@@ -17,7 +17,7 @@ class FileToElasticSearch:
                  es_host: str = "localhost",
                  es_port: int = 9200,
                  index_name: str = "documents",
-                 embedding_model: str = "qwen:7b"):
+                 embedding_model: str = "nomic-embed-text"):
         """
         Initialize the FileToElasticSearch class.
 

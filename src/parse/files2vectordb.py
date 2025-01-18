@@ -12,7 +12,7 @@ from langchain_community.vectorstores import FAISS
 
 
 class FileToVectorDB:
-    def __init__(self, db_root: str = "db", embedding_model: str = "qwen:7b"):
+    def __init__(self, db_root: str = "db", embedding_model: str = "nomic-embed-text"):
         """
         Initialize the FileToVectorDB class.
 
@@ -252,7 +252,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process files and build a vector database.")
     parser.add_argument("--input", type=str, help="Path to the file or directory to process.")
     parser.add_argument("--db_root", type=str, default="db", help="Root directory for storing vector databases.")
-    parser.add_argument("--embedding_model", type=str, default="qwen:7b",
+    parser.add_argument("--embedding_model", type=str, default="nomic-embed-text",
                         help="Embedding model to use for generating vectors.")
     args = parser.parse_args()
 
