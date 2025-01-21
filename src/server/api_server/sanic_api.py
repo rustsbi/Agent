@@ -13,7 +13,7 @@ root_dir = os.path.dirname(root_dir)
 # 将项目根目录添加到sys.path
 sys.path.append(root_dir)
 from sanic_api_handler import *
-from src.core.local_doc_qa import LocalDocQA
+from src.core.qa_handler import QAHandler
 from src.utils.log_handler import debug_logger, qa_logger
 from sanic.worker.manager import WorkerManager
 from sanic import Sanic
@@ -43,13 +43,13 @@ app.static('/rustsbi/', './dist/', name='rustsbi', index="index.html")
 
 
 @app.before_server_start
-async def init_local_doc_qa(app, loop):
+async def init_qa_handler(app, loop):
     start = time.time()
-    local_doc_qa = LocalDocQA(args.port)
-    local_doc_qa.init_cfg(args)
+    qa_handler = QAHandler(args.port)
+    qa_handler.init_cfg(args)
     end = time.time()
     print(f'init local_doc_qa cost {end - start}s', flush=True)
-    app.ctx.local_doc_qa = local_doc_qa
+    app.ctx.qa_handler = qa_handler
     
 @app.after_server_start
 async def notify_server_started(app, loop):
@@ -68,8 +68,8 @@ async def start_server_and_open_browser(app, loop):
 # tags=["新建知识库"]
 app.add_route(document, "/api/docs", methods=['GET'])
 app.add_route(health_check, "/api/health_check", methods=['GET'])  # tags=["健康检查"]
-app.add_route(new_knowledge_base, "/api/local_doc_qa/new_knowledge_base", methods=['POST'])  # tags=["新建知识库"]
-app.add_route(upload_files, "/api/local_doc_qa/upload_files", methods=['POST'])  # tags=["上传文件"]
+app.add_route(new_knowledge_base, "/api/qa_handler/new_knowledge_base", methods=['POST'])  # tags=["新建知识库"]
+app.add_route(upload_files, "/api/qa_handler/upload_files", methods=['POST'])  # tags=["上传文件"]
 # app.add_route(local_doc_chat, "/api/local_doc_qa/local_doc_chat", methods=['POST'])  # tags=["问答接口"] 
 # app.add_route(list_kbs, "/api/local_doc_qa/list_knowledge_base", methods=['POST'])  # tags=["知识库列表"] 
 # app.add_route(list_docs, "/api/local_doc_qa/list_files", methods=['POST'])  # tags=["文件列表"]
