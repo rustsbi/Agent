@@ -263,7 +263,7 @@ class MysqlClient:
                     debug_logger.error(f"Error creating index: {err}")
 
         debug_logger.info("All tables and indexes checked/created successfully.")
-
+    # 检查知识库是否存在
     def check_kb_exist(self, user_id, kb_ids):
         if not kb_ids:
             return []
@@ -275,27 +275,27 @@ class MysqlClient:
         valid_kb_ids = [kb_info[0] for kb_info in result]
         unvalid_kb_ids = list(set(kb_ids) - set(valid_kb_ids))
         return unvalid_kb_ids
-    
+    # 检查用户是否存在
     def check_user_exist_(self, user_id):
         query = "SELECT user_id FROM User WHERE user_id = %s"
         result = self.execute_query_(query, (user_id,), fetch=True)
         debug_logger.info("check_user_exist {}".format(result))
         return result is not None and len(result) > 0
 
-        # 对外接口不需要增加用户，新建知识库的时候增加用户就可以了
+    # 对外接口不需要增加用户，新建知识库的时候增加用户就可以了
     def add_user_(self, user_id, user_name):
         query = "INSERT IGNORE INTO User (user_id, user_name) VALUES (%s, %s)"
         self.execute_query_(query, (user_id, user_name), commit=True)
         debug_logger.info(f"Add user: {user_id} {user_name}")
-
+    # 创建新的知识库
     def new_milvus_base(self, kb_id, user_id, kb_name, user_name=None):
         if not self.check_user_exist_(user_id):
             self.add_user_(user_id, user_name)
         query = "INSERT INTO KnowledgeBase (kb_id, user_id, kb_name) VALUES (%s, %s, %s)"
         self.execute_query_(query, (kb_id, user_id, kb_name), commit=True)
         return kb_id, "success"
-    
-    def get_files(self, user_id, kb_id, file_id=None):
+    # 获取知识库中的文件
+    def get_files(self, kb_id, file_id=None):
         limit = 100
         offset = 0
         all_files = []
@@ -313,7 +313,7 @@ class MysqlClient:
             params.append(file_id)
             files = self.execute_query_(base_query, params, fetch=True)
             return files
-        
+        # 更好的利用数据库连接池中的多个连接
         while True:
             query = base_query + "LIMIT %s AND OFFSET %s"
             current_params = params + [limit, offset]
@@ -324,3 +324,47 @@ class MysqlClient:
             offset += limit
         
         return all_files
+    # 查看文件是否存在
+    def check_file_exist_by_name(self, user_id, kb_id, file_names):
+        results = []
+        batch_size = 100  # 根据实际情况调整批次大小
+
+        # 分批处理file_names
+        for i in range(0, len(file_names), batch_size):
+            batch_file_names = file_names[i:i + batch_size]
+
+            # 创建参数化的查询，用%s作为占位符
+            placeholders = ','.join(['%s'] * len(batch_file_names))
+            query = """
+                SELECT file_id, file_name, file_size, status FROM File
+                WHERE deleted = 0
+                AND file_name IN ({})
+                AND kb_id = %s
+                AND kb_id IN (SELECT kb_id FROM KnowledgeBase WHERE user_id = %s)
+            """.format(placeholders)
+
+            # 使用参数化查询，将文件名作为参数传递
+            query_params = batch_file_names + [kb_id, user_id]
+            batch_result = self.execute_query_(query, query_params, fetch=True)
+            debug_logger.info("check_file_exist_by_name batch {}: {}".format(i // batch_size, batch_result))
+            results.extend(batch_result)
+
+        return results
+    
+        # [知识库] 获取指定kb_ids的知识库
+    # 获取知识库名字
+    def get_knowledge_base_name(self, kb_ids):
+        kb_ids_str = ','.join("'{}'".format(str(x)) for x in kb_ids)
+        query = "SELECT user_id, kb_id, kb_name FROM KnowledgeBase WHERE kb_id IN ({}) AND deleted = 0".format(
+            kb_ids_str)
+        return self.execute_query_(query, (), fetch=True)
+    
+    # [文件] 向指定知识库下面增加文件
+    def add_file(self, file_id, user_id, kb_id, file_name, file_size, file_location, chunk_size, timestamp, file_url='',
+                 status="gray"):
+        query = ("INSERT INTO File (file_id, user_id, kb_id, file_name, status, file_size, file_location, chunk_size, "
+                 "timestamp, file_url) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)")
+        self.execute_query_(query,
+                            (file_id, user_id, kb_id, file_name, status, file_size, file_location, chunk_size, timestamp, file_url),
+                            commit=True)
+        

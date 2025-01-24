@@ -1,7 +1,7 @@
 import time
 from functools import wraps  # 添加这行导入
 from src.utils.log_handler import debug_logger, embed_logger, rerank_logger
-from src.configs.configs import KB_SUFFIX
+from src.configs.configs import KB_SUFFIX, EMBED_MODEL_PATH, RERANK_MODEL_PATH
 from sanic.request import Request
 from sanic.exceptions import BadRequest
 import logging
@@ -9,34 +9,12 @@ import traceback
 import re
 import mimetypes
 import os
-import fitz  # PyMuPDF
 import chardet
+import inspect
+from transformers import AutoTokenizer
+
+
 # 异步执行环境下的耗时统计装饰器
-
-from typing import Union, Tuple, Dict
-from sanic.request import File
-from src.configs.configs import UPLOAD_ROOT_PATH
-import uuid
-import os
-
-
-class LocalFile:
-    def __init__(self, user_id, kb_id, file: File, file_name):
-        self.user_id = user_id
-        self.kb_id = kb_id
-        self.file_id = uuid.uuid4().hex
-        self.file_name = file_name
-        self.file_content = file.body
-        upload_path = os.path.join(UPLOAD_ROOT_PATH, user_id)
-        file_dir = os.path.join(upload_path, self.kb_id, self.file_id)
-        os.makedirs(file_dir, exist_ok=True)
-        self.file_location = os.path.join(file_dir, self.file_name)
-        #  如果文件不存在：
-        if not os.path.exists(self.file_location):
-            with open(self.file_location, 'wb') as f:
-                f.write(self.file_content)
-
-
 def get_time_async(func):
     @wraps(func)
     async def get_time_async_inner(*args, **kwargs):
@@ -180,26 +158,38 @@ def check_filename(filename, max_length=200):
         return None
 
     return filename
+    
+def cur_func_name():
+    return inspect.currentframe().f_back.f_code.co_name
+
+def clear_string(str):
+    # 只保留中文、英文、数字
+    str = re.sub(r"[^\u4e00-\u9fa5a-zA-Z0-9]", "", str)
+    return str
+
+embedding_tokenizer = AutoTokenizer.from_pretrained(EMBED_MODEL_PATH)
+rerank_tokenizer = AutoTokenizer.from_pretrained(RERANK_MODEL_PATH)
+def num_tokens_embed(text: str) -> int:
+    """返回字符串的Token数量"""
+    return len(embedding_tokenizer.encode(text, add_special_tokens=True))
 
 def fast_estimate_file_char_count(file_path):
     """
     快速估算文件的字符数，如果超过max_chars则返回False，否则返回True
     """
     file_extension = os.path.splitext(file_path)[1].lower()
-
+    # TODO:先支持纯文本文件，后续在支持更多
     try:
-        if file_extension in ['.md', '.txt', '.csv']:
+        if file_extension in ['.txt']:
+            # 'rb' 表示以二进制模式读取
             with open(file_path, 'rb') as file:
+                # 读取前1024字节
                 raw = file.read(1024)
+                # 使用chardet库检测文件编码
                 encoding = chardet.detect(raw)['encoding']
+            # 第二次打开计算字符数
             with open(file_path, 'r', encoding=encoding) as file:
                 char_count = sum(len(line) for line in file)
-
-        elif file_extension == '.pdf':
-            doc = fitz.open(file_path)
-            char_count = sum(len(page.get_text()) for page in doc)
-            doc.close()
-
         else:
             # 不支持的文件类型
             return None

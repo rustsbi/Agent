@@ -10,3 +10,5 @@ langchain-openai==0.0.8
 langchain_elasticsearch==0.2.2
 mysql-connector-python==8.2.0
 pymilvus==2.4.2
+chardet==5.2.0
+aiomysql==0.2.0

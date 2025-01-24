@@ -12,14 +12,14 @@ from src.client.rerank.client import SBIRerank
 from src.configs.configs import VECTOR_SEARCH_SCORE_THRESHOLD
 from src.utils.log_handler import debug_logger, embed_logger, rerank_logger
 from src.client.database.mysql.mysql_client import MysqlClient
-# from src.client.database.milvus.milvus_client import MilvusClient
+from src.client.database.milvus.milvus_client import MilvusClient
 from src.client.database.elasticsearch.es_client import ESClient
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
 
 
-class LocalDocQA:
+class QAHandler:
     def __init__(self, port):
         self.port = port
         self.milvus_cache = None
@@ -67,7 +67,7 @@ class LocalDocQA:
         self.embeddings = SBIEmbeddings()
         self.rerank = SBIRerank()
         self.milvus_summary = MysqlClient()
-        # self.milvus_kb = MilvusClient()
+        self.milvus_kb = MilvusClient()
         self.es_client = ESClient()
         # self.retriever = ParentRetriever(self.milvus_kb, self.milvus_summary, self.es_client)
 

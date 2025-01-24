@@ -152,7 +152,7 @@ async def upload_files(req: request):
     failed_files = []
     record_exist_files = []
     for file, file_name in zip(files, file_names):
-        # 对于同名文件直接跳过，不保存到本地服务器上
+        # 对于数据库中同名文件直接跳过，不保存到本地服务器上
         if file_name in exist_file_names:
             record_exist_files.append(file_name)
             continue
@@ -167,16 +167,11 @@ async def upload_files(req: request):
         file_id = local_file.file_id
         file_size = len(local_file.file_content)
         file_location = local_file.file_location
-        local_files.append(local_file)
+        # local_files.append(local_file)
         msg = qa_handler.milvus_summary.add_file(file_id, user_id, kb_id, file_name, file_size, file_location,
                                                    chunk_size, timestamp)
         debug_logger.info(f"{file_name}, {file_id}, {msg}")
-        data.append(
-            {"file_id": file_id, "file_name": file_name, "status": "gray", "bytes": len(local_file.file_content),
-             "timestamp": timestamp, "estimated_chars": chars})
-    # TODO: 将上传的文本文件进行切分并传入向量数据库中
-    # LocalFile结构体，对每个文件进行处理
-    for local_file in local_files:
+
         kb_name = qa_handler.milvus_summary.get_knowledge_base_name([local_file.kb_id])[0][2]
         file_handler = FileHanlder(local_file.user_id, kb_name, local_file.kb_id, 
                                          local_file.file_id, local_file.file_location, 
@@ -185,10 +180,15 @@ async def upload_files(req: request):
         file_handler.split_file_to_docs()
         # 将处理好的Document中内容进行切分
         file_handler.docs = FileHanlder.split_docs(file_handler.docs)
-        # 将切分好的Document存入向量数据库中 TODO
+        # TODO 将切分好的Document存入向量数据库中
         print(file_handler.docs)
-        # TODO 将文件
-    # qanything 1.x版本处理方式
+        # TODO：存入完以后更新mysql中file表的chunks_number，状态之类的后面再说吧，先把关键的增删改查写了
+
+        # 返回给前端的数据
+        data.append({"file_id": file_id, "file_name": file_name, "status": "green", 
+                     "bytes": len(local_file.file_content), "timestamp": timestamp, "estimated_chars": chars})
+    # qanything 1.x版本处理方式，2.0以后的版本都是起另外一个服务轮训文件状态，之后添加到向量数据库中
+    # 后面做优化在像他们那样做，这样文件上传流程会快不少
     # asyncio.create_task(local_doc_qa.insert_files_to_milvus(user_id, kb_id, local_files))
     if failed_files:
         msg = f"warning, {failed_files} chars is too much, max characters length is {MAX_CHARS}, skip upload."
