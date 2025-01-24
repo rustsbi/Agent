@@ -152,7 +152,6 @@ def parse_txt(file_path):
         return ""
 
 def file2db(uploaded_file, filename):
-
     file_hash = hashlib.md5(uploaded_file.read()).hexdigest()
     uploaded_file.seek(0)  # 重置文件指针
     print(f"Processing {filename} to db...")
@@ -167,7 +166,7 @@ def file2db(uploaded_file, filename):
         return
     embedding_path = os.path.join(db_path, 'index.pkl')
     os.makedirs(db_path, exist_ok=True)
-    embeddings = OllamaEmbeddings(base_url="http://localhost:11434", model="qwen:7b")
+    embeddings = OllamaEmbeddings(base_url="http://localhost:11434", model="nomic-embed-text")
     # 检查向量数据库是否存在
     if os.path.exists(db_path) and os.path.exists(embedding_path):
         print(f"Vector database for {file} already exists.")

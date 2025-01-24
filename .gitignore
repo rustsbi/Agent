@@ -1,1 +1,7 @@
 src/parse/db/*
+*.onnx
+__pycache__
+logs
+bce_model
+configs.py
+file_store
