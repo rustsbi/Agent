@@ -21,6 +21,7 @@ class MilvusClient:
         self.port = MILVUS_PORT
         self.sess: Collection = None
         self.partitions: List[Partition] = []
+        # 可以先不用
         self.executor = ThreadPoolExecutor(max_workers=4)
         self.top_k = VECTOR_SEARCH_TOP_K
         self.search_params = {"metric_type": "L2", "params": {"nprobe": 128}}
@@ -63,4 +64,7 @@ class MilvusClient:
     @property
     def output_fields(self):
         return ['user_id', 'kb_id', 'file_id', 'headers', 'doc_id', 'content', 'embedding']
+    
+
+
 

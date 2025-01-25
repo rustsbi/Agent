@@ -84,10 +84,9 @@ async def new_knowledge_base(req: request):
     return sanic_json({"code": 200, "msg": "success create knowledge base {}".format(kb_id),
                        "data": {"kb_id": kb_id, "kb_name": kb_name, "timestamp": timestamp}})
 
-
 @get_time_async
-# 上传同名文件直接覆盖
 async def upload_files(req: request):
+    # 取qa_handler
     qa_handler: QAHandler = req.app.ctx.qa_handler
     user_id = safe_get(req, 'user_id')
     user_info = safe_get(req, 'user_info', "1234")
@@ -156,6 +155,7 @@ async def upload_files(req: request):
         if file_name in exist_file_names:
             record_exist_files.append(file_name)
             continue
+        # 将文件保存到本地
         local_file = LocalFile(user_id, kb_id, file, file_name)
         # TODO：现在只能处理txt
         chars = fast_estimate_file_char_count(local_file.file_location)
@@ -168,19 +168,22 @@ async def upload_files(req: request):
         file_size = len(local_file.file_content)
         file_location = local_file.file_location
         # local_files.append(local_file)
+        # 加到mysql数据库中
         msg = qa_handler.milvus_summary.add_file(file_id, user_id, kb_id, file_name, file_size, file_location,
                                                    chunk_size, timestamp)
         debug_logger.info(f"{file_name}, {file_id}, {msg}")
-
+        # 将文件切割向量化并保存到向量数据库中
         kb_name = qa_handler.milvus_summary.get_knowledge_base_name([local_file.kb_id])[0][2]
         file_handler = FileHanlder(local_file.user_id, kb_name, local_file.kb_id, 
                                          local_file.file_id, local_file.file_location, 
                                          local_file.file_name, chunk_size)
-        # 将文件转换为Document类型
-        file_handler.split_file_to_docs()
-        # 将处理好的Document中内容进行切分
+        # txt
+        # 将文件转换为Document类型，langchain
+        file_handler.split_file_to_docs() # Document类
+        # 将处理好的Document中内容进行切分 切父块800 没重叠  切子块400 重叠部分100
         file_handler.docs = FileHanlder.split_docs(file_handler.docs)
         # TODO 将切分好的Document存入向量数据库中
+        # 向量数据库存 向量数据库搜索
         print(file_handler.docs)
         # TODO：存入完以后更新mysql中file表的chunks_number，状态之类的后面再说吧，先把关键的增删改查写了
 
