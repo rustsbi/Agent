@@ -3,3 +3,5 @@ src/parse/db/*
 __pycache__
 logs
 bce_model
+configs.py
+file_store
