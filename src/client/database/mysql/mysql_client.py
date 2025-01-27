@@ -368,3 +368,7 @@ class MysqlClient:
                             (file_id, user_id, kb_id, file_name, status, file_size, file_location, chunk_size, timestamp, file_url),
                             commit=True)
         
+    # [文件] 添加 chunks number 字段
+    def modify_file_chunks_number(self, file_id, user_id, kb_id, chunks_number):
+        query = ("UPDATE File SET chunks_number = %s WHERE file_id = %s AND user_id = %s AND kb_id = %s")
+        self.execute_query_(query, (chunks_number, file_id, user_id, kb_id), commit=True)

@@ -39,7 +39,7 @@ class LocalFile:
         with open(self.file_location, 'wb') as f:
             f.write(self.file_content)
 
-class FileHanlder:
+class FileHandler:
     def __init__(self, user_id, kb_name,kb_id, file_id, file_location, file_name, chunk_size):
         self.chunk_size = chunk_size
         self.user_id = user_id
