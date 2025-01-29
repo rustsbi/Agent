@@ -22,7 +22,7 @@ from src.utils.general_utils import get_time, get_time_async, \
 from src.core.qa_handler import QAHandler
 from src.utils.log_handler import debug_logger
 from src.utils.general_utils import  fast_estimate_file_char_count
-from src.core.file_handler.file_handler import LocalFile, FileHanlder
+from src.core.file_handler.file_handler import LocalFile, FileHandler
 from sanic import request
 from sanic.response import text as sanic_text
 from sanic.response import json as sanic_json
@@ -174,19 +174,27 @@ async def upload_files(req: request):
         debug_logger.info(f"{file_name}, {file_id}, {msg}")
         # 将文件切割向量化并保存到向量数据库中
         kb_name = qa_handler.milvus_summary.get_knowledge_base_name([local_file.kb_id])[0][2]
-        file_handler = FileHanlder(local_file.user_id, kb_name, local_file.kb_id, 
+        file_handler = FileHandler(local_file.user_id, kb_name, local_file.kb_id, 
                                          local_file.file_id, local_file.file_location, 
                                          local_file.file_name, chunk_size)
         # txt
         # 将文件转换为Document类型，langchain
         file_handler.split_file_to_docs() # Document类
+        # print(file_handler.docs)
         # 将处理好的Document中内容进行切分 切父块800 没重叠  切子块400 重叠部分100
-        file_handler.docs = FileHanlder.split_docs(file_handler.docs)
+        file_handler.docs = FileHandler.split_docs(file_handler.docs)
+        parent_chunk_number = len(set(doc.metadata["doc_id"] for doc in file_handler.docs)) # file_handler.docs 列表中每个元素 doc 的不重复的 doc.doc_id 数量
         # TODO 将切分好的Document存入向量数据库中
+        qa_handler.milvus_kb.load_collection_(user_id)
+        for doc in file_handler.docs:
+            textvec = qa_handler.embeddings.embed_query(doc.page_content)
+            # print(textvec)
+            file_handler.embs.append(textvec)
+            qa_handler.milvus_kb.store_doc(doc, textvec)
         # 向量数据库存 向量数据库搜索
         print(file_handler.docs)
         # TODO：存入完以后更新mysql中file表的chunks_number，状态之类的后面再说吧，先把关键的增删改查写了
-
+        qa_handler.milvus_summary.modify_file_chunks_number(file_id, user_id, kb_id, parent_chunk_number)
         # 返回给前端的数据
         data.append({"file_id": file_id, "file_name": file_name, "status": "green", 
                      "bytes": len(local_file.file_content), "timestamp": timestamp, "estimated_chars": chars})
