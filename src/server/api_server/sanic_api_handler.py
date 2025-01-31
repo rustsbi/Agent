@@ -198,7 +198,7 @@ async def upload_files(req: request):
         # 返回给前端的数据
         data.append({"file_id": file_id, "file_name": file_name, "status": "green", 
                      "bytes": len(local_file.file_content), "timestamp": timestamp, "estimated_chars": chars})
-    # qanything 1.x版本处理方式，2.0以后的版本都是起另外一个服务轮训文件状态，之后添加到向量数据库中
+    # qanything 1.x版本处理方式，2.0以后的版本都是起另外一个服务轮询文件状态，之后添加到向量数据库中
     # 后面做优化在像他们那样做，这样文件上传流程会快不少
     # asyncio.create_task(local_doc_qa.insert_files_to_milvus(user_id, kb_id, local_files))
     if failed_files:
