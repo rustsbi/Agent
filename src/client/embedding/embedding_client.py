@@ -180,23 +180,47 @@ async def performance_test():
         async_time = time.time() - start_time
         debug_logger.info(f"异步处理 {size} 个文本耗时: {async_time:.2f}秒")
 
+def embed_user_input(user_input: str):
+    """测试用户输入的文本嵌入"""
+    embedder = SBIEmbeddings()
+    
+    # 对用户输入的文本进行预处理
+    processed_input = _process_query(user_input)
+    
+    debug_logger.info("\n测试用户输入的嵌入:")
+    debug_logger.info(f"用户输入: {user_input}")
+    debug_logger.info(f"预处理后的输入: {processed_input}")
+    
+    try:
+        # 使用同步方法获取嵌入向量
+        embedding = embedder.embed_query(processed_input)
+        debug_logger.info(f"嵌入向量维度: {len(embedding)}")
+        debug_logger.info(f"嵌入向量: {embedding}")
+    except Exception as e:
+        debug_logger.error(f"嵌入过程中发生错误: {str(e)}")
+
+    return embedding
+
 
 async def main():
     """主测试函数"""
     debug_logger.info(f"开始embedding客户端测试...")
     
-    # 测试异步方法
-    await test_async_methods()
-    
-    # # 测试同步方法
-    # test_sync_methods()
-    
-    # # 测试错误处理
-    # test_error_handling()
-    
-    # # 执行性能测试
-    # await performance_test()
-    
+    try:
+        # 测试异步方法
+        await test_async_methods()
+        
+        # 测试同步方法
+        test_sync_methods()
+        
+        # 测试错误处理
+        test_error_handling()
+        
+        # 执行性能测试
+        await performance_test()
+    except Exception as e:
+        debug_logger.error(f"测试过程中发生错误: {str(e)}")
+
     debug_logger.info("embedding客户端测试完成")
 
 
