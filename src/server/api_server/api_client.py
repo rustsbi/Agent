@@ -139,9 +139,9 @@ async def test_upload_files(file_path: str):
 
 
 def run_test():    
-    asyncio.run(test_document())
-    asyncio.run(test_health_check())
-    asyncio.run(test_new_knowledge_base())
+    # asyncio.run(test_document())
+    # asyncio.run(test_health_check())
+    # asyncio.run(test_new_knowledge_base())
     asyncio.run(test_upload_files('./这是一个测试文件.txt'))
 
 # asyncio.run(test_upload_files('./这是一个测试文件.txt'))

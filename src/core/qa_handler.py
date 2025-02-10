@@ -7,7 +7,7 @@ current_script_path = os.path.abspath(__file__)
 root_dir = os.path.dirname(os.path.dirname(os.path.dirname(current_script_path)))
 sys.path.append(root_dir)
 
-from src.client.embedding.client import SBIEmbeddings
+from src.client.embedding.embedding_client import SBIEmbeddings
 from src.client.rerank.client import SBIRerank
 from src.configs.configs import VECTOR_SEARCH_SCORE_THRESHOLD
 from src.utils.log_handler import debug_logger, embed_logger, rerank_logger

@@ -372,3 +372,19 @@ class MysqlClient:
     def modify_file_chunks_number(self, file_id, user_id, kb_id, chunks_number):
         query = ("UPDATE File SET chunks_number = %s WHERE file_id = %s AND user_id = %s AND kb_id = %s")
         self.execute_query_(query, (chunks_number, file_id, user_id, kb_id), commit=True)
+
+    def store_parent_chunks(self, docs):
+        query = """
+            INSERT INTO Documents (doc_id, json_data)
+            VALUES (%s, %s)
+            ON DUPLICATE KEY UPDATE json_data = VALUES(json_data)
+        """
+        for (id,doc) in docs:
+            # 构造要存储的JSON数据
+            doc_data = {
+                'content': doc.page_content,
+                'metadata': doc.metadata
+            }
+            # 将数据转换为JSON字符串
+            json_data = json.dumps(doc_data, ensure_ascii=False)
+            self.execute_query_(query, (id, json_data), commit=True)

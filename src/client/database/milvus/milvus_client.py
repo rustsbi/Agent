@@ -100,17 +100,27 @@ class MilvusClient:
                 [content],  # content
                 [embedding]  # embedding
             ]
+                    # 分区名称（使用kb_id作为分区标识）
 
+            # 检查分区是否存在，如果不存在则创建
+            existing_partitions = set(self.sess.partitions)
+            if kb_id not in [p.name for p in existing_partitions]:
+                try:
+                    self.sess.create_partition(kb_id)
+                    print(f"Created new partition: {kb_id}")
+                except Exception as e:
+                    print(f"Failed to create partition: {str(e)}")
+                    raise MilvusFailed(f"Failed to create partition: {str(e)}")
             # 插入数据到 Milvus
-            self.sess.insert(data)
-            print(f"Document {doc_id} stored successfully in collection {user_id}.")
+            self.sess.insert(data, partition_name=kb_id)
+            print(f"Document {doc_id} stored successfully in collection {user_id} partition {kb_id}.")
 
         except Exception as e:
             print(f'[{cur_func_name()}] [store_doc] Failed to store document: {traceback.format_exc()}')
             raise MilvusFailed(f"Failed to store document: {str(e)}")
 
     @get_time
-    def search_docs(self, query_embedding: List[float] = None, filter_expr: str = None, doc_limit: int = 10):
+    def search_docs(self, query_embedding: List[float] = None, filter_expr: str = None, doc_limit: int = 10, kb_ids: List[str] = None, search_all_partitions: bool = False):
         """
         从 Milvus 集合中检索文档。
 
@@ -131,6 +141,28 @@ class MilvusClient:
                 "metric_type": self.search_params["metric_type"],
                 "params": self.search_params["params"]
             }
+            partition_names = []
+            if not search_all_partitions:
+                if kb_ids:
+                    # 获取所有现有分区
+                    existing_partitions = set(self.sess.partitions)
+                    
+                    # 构造要搜索的分区名称列表
+                    partition_names = [kb_id for kb_id in kb_ids]
+                    
+                    # 检查分区是否都存在
+                    non_existing = [p for p in partition_names if p not in existing_partitions]
+                    if non_existing:
+                        print(f"Warning: Following partitions do not exist: {non_existing}")
+                    
+                    # 只保留存在的分区
+                    partition_names = [p for p in partition_names if p in existing_partitions]
+                    
+                    if not partition_names:
+                        raise MilvusFailed("None of the specified partitions exist")
+                else:
+                    # 如果既不搜索所有分区，又没有指定kb_ids，则使用默认分区
+                    partition_names = ["_default"]
 
             # 构造查询表达式
             expr = ""
@@ -144,7 +176,8 @@ class MilvusClient:
                 "param": {"metric_type": "L2", "params": {"nprobe": 128}}, # 检索的精度和性能
                 "limit": doc_limit, # 指定返回的最相似文档的数量上限
                 "expr": expr,
-                "output_fields": self.output_fields
+                "output_fields": self.output_fields,
+                "partition_names": partition_names if partition_names else None  # 如果为空则搜索所有分区
             })
 
             # 执行检索
