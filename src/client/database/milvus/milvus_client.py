@@ -120,7 +120,7 @@ class MilvusClient:
             raise MilvusFailed(f"Failed to store document: {str(e)}")
 
     @get_time
-    def search_docs(self, query_embedding: List[float] = None, filter_expr: str = None, doc_limit: int = 10, kb_ids: List[str] = None, search_all_partitions: bool = False):
+    def search_docs(self, query: str = None, filter_expr: str = None, doc_limit: int = 10, kb_ids: List[str] = None, search_all_partitions: bool = False) -> List[Document]:
         """
         从 Milvus 集合中检索文档。
 
@@ -133,6 +133,7 @@ class MilvusClient:
             List[dict]: 检索到的文档列表，每个文档是一个字典，包含字段值和向量。
         """
         try:
+            query_embedding = embed_user_input(query)
             if not self.sess:
                 raise MilvusFailed("Milvus collection is not loaded. Call load_collection_() first.")
 
@@ -145,11 +146,12 @@ class MilvusClient:
             if not search_all_partitions:
                 if kb_ids:
                     # 获取所有现有分区
-                    existing_partitions = set(self.sess.partitions)
-                    
+                    existing_partitions = list(self.sess.partitions)
+                    print(existing_partitions)
+                    existing_partitions = [p.name for p in existing_partitions]           
                     # 构造要搜索的分区名称列表
                     partition_names = [kb_id for kb_id in kb_ids]
-                    
+
                     # 检查分区是否都存在
                     non_existing = [p for p in partition_names if p not in existing_partitions]
                     if non_existing:
@@ -165,7 +167,7 @@ class MilvusClient:
                     partition_names = ["_default"]
 
             # 构造查询表达式
-            expr = ""
+            expr = None
             if filter_expr:
                 expr = filter_expr
 
@@ -182,22 +184,18 @@ class MilvusClient:
 
             # 执行检索
             results = self.sess.search(**search_params)
-
             # 处理检索结果
             retrieved_docs = []
             for hits in results:
                 for hit in hits:
-                    doc = {
-                        # "id": hit.id,
-                        # "distance": hit.distance,
-                        "user_id": hit.entity.get("user_id"),
-                        "kb_id": hit.entity.get("kb_id"),
-                        "file_id": hit.entity.get("file_id"),
-                        "headers": json.loads(hit.entity.get("headers")),
-                        "doc_id": hit.entity.get("doc_id"),
-                        "content": hit.entity.get("content"),
-                        "embedding": hit.entity.get("embedding")
-                    }
+                    doc = Document(hit.entity.get("content"))
+                    doc.metadata["user_id"] = hit.entity.get("user_id")
+                    doc.metadata["kb_id"] = hit.entity.get("kb_id")
+                    doc.metadata["file_id"] = hit.entity.get("file_id")
+                    doc.metadata["headers"] = json.loads(hit.entity.get("headers")),
+                    doc.metadata["doc_id"] = hit.entity.get("doc_id")
+                    # doc.metadata["embedding"] = hit.entity.get("embedding")
+                    doc.metadata["distance"] =  hit.distance
                     retrieved_docs.append(doc)
 
             return retrieved_docs
@@ -243,8 +241,6 @@ def main():
 
     # 检索所有文档
     try:
-        # # 构造查询表达式
-        filter_expr = "123"  # 设置过滤条件
 
         # # 执行查询
         # results = client.sess.query(
@@ -252,15 +248,17 @@ def main():
         #     output_fields=client.output_fields,  # 指定返回的字段
         #     limit=1000
         # )
-        query_expr = embed_user_input("荷塘月色")
-        results = client.search_docs(query_expr, filter_expr, 1000)
+        query = "荷塘月色"
+        results = client.search_docs(query, None, 3, ["KBbf9488a498cf4407a6abdf477208c3ed"])
         # 打印检索结果
         if not results:
             print(f"No documents found in collection {user_id}.")
             return
 
         print(f"Found {len(results)} documents in collection {user_id}:")
+        print(results)
         for i, result in enumerate(results):
+            continue
             print(f"\nDocument {i + 1}:")
             print(f"  user_id: {result['user_id']}")
             print(f"  kb_id: {result['kb_id']}")

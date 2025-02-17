@@ -1,7 +1,6 @@
 import copy
 import os
 import sys
-import time
 current_script_path = os.path.abspath(__file__)
 # 将项目根目录添加到sys.path
 root_dir = os.path.dirname(os.path.dirname(os.path.dirname(current_script_path)))
@@ -167,8 +166,7 @@ class FileHandler:
             separators=SEPARATORS,
             chunk_size=child_chunk_size,
             chunk_overlap=int(child_chunk_size / 3),
-            length_function=num_tokens_embed,
-            keep_separator=True)
+            length_function=num_tokens_embed)
         # 先处理父文档，父文档没有重叠部分每一个都是单独的
         # documents = self.parent_splitter.split_documents(documents)
         split_documents = []

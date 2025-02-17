@@ -361,7 +361,7 @@ class MysqlClient:
     
     # [文件] 向指定知识库下面增加文件
     def add_file(self, file_id, user_id, kb_id, file_name, file_size, file_location, chunk_size, timestamp, file_url='',
-                 status="gray"):
+                 status="green"):
         query = ("INSERT INTO File (file_id, user_id, kb_id, file_name, status, file_size, file_location, chunk_size, "
                  "timestamp, file_url) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)")
         self.execute_query_(query,
