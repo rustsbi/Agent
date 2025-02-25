@@ -187,7 +187,7 @@ class OpenAILLM:
             yield answer_result
 
 async def main():
-    llm = OpenAILLM(DEFAULT_MODEL_PATH, 8000, DEFAULT_API_BASE, DEFAULT_API_KEY, DEFAULT_API_CONTEXT_LENGTH, 5, 0.5)
+    llm = OpenAILLM(DEFAULT_MODEL_PATH, 8000, DEFAULT_API_BASE, DEFAULT_API_KEY, DEFAULT_API_CONTEXT_LENGTH, 0.5, 0.5)
     streaming = True
     chat_history = []
     prompt = """参考信息：

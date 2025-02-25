@@ -14,7 +14,10 @@ from src.configs.configs import DEFAULT_CHILD_CHUNK_SIZE, \
       UPLOAD_ROOT_PATH, SEPARATORS, DEFAULT_PARENT_CHUNK_SIZE
 from langchain.docstore.document import Document
 from src.utils.log_handler import insert_logger
-from langchain_community.document_loaders import TextLoader
+
+# 关于langchain的文档加载器，可以访问 https://python.langchain.com/api_reference/community/document_loaders
+from langchain_community.document_loaders import TextLoader, UnstructuredMarkdownLoader, Docx2txtLoader, UnstructuredPowerPointLoader, UnstructuredXMLLoader
+from langchain_community.document_loaders  import PyPDFLoader, UnstructuredImageLoader, UnstructuredHTMLLoader, UnstructuredURLLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import uuid
 import threading
@@ -82,12 +85,111 @@ class FileHandler:
 
         insert_logger.error(f"Failed to load file with all attempted encodings: {file_path}")
         return []
+    
+    def load_pdf(file_path):
+        try:
+            loader = PyPDFLoader(file_path)
+            docs = loader.load()
+            insert_logger.info(f"PyPDFLoader success: {file_path}")
+            return docs
+        except Exception:
+            insert_logger.error(f"PyPDFLoader error: {file_path}, {traceback.format_exc()}")
+            return []
+        
+    def load_md(file_path):
+        try:
+            loader = UnstructuredMarkdownLoader(file_path, mode="elements")
+            docs = loader.load()
+            insert_logger.info(f"UnstructuredMarkdownLoader success: {file_path}")
+            return docs
+        except Exception:
+            insert_logger.error(f"UnstructuredMarkdownLoader error: {file_path}, {traceback.format_exc()}")
+            return []
+        
+    def load_docx(file_path):
+        try:
+            loader = Docx2txtLoader(file_path)
+            docs = loader.load()
+            insert_logger.info(f"UnstructuredDocxLoader success: {file_path}")
+            return docs
+        except Exception:
+            insert_logger.error(f"UnstructuredDocxLoader error: {file_path}, {traceback.format_exc()}")
+            return []
+        
+    def load_img(file_path):
+        try:
+            loader = UnstructuredImageLoader(file_path)
+            docs = loader.load()
+            insert_logger.info(f"UnstructuredImageLoader success: {file_path}")
+            return docs
+        except Exception:
+            insert_logger.error(f"UnstructuredImageLoader error: {file_path}, {traceback.format_exc()}")
+            return []
+    
+    def load_html(file_path):
+        try:
+            loader = UnstructuredHTMLLoader(file_path)
+            docs = loader.load()
+            insert_logger.info(f"UnstructuredHTMLLoader success: {file_path}")
+            return docs
+        except Exception:
+            insert_logger.error(f"UnstructuredHTMLLoader error: {file_path}, {traceback.format_exc()}")
+            return []
+        
+    def load_ppt(file_path):
+        try:
+            loader = UnstructuredPowerPointLoader(file_path)
+            docs = loader.load()
+            insert_logger.info(f"UnstructuredPowerPointLoader success: {file_path}")
+            return docs
+        except Exception:
+            insert_logger.error(f"UnstructuredPowerPointLoader error: {file_path}, {traceback.format_exc()}")
+            return []
+        
+    def load_url(url_path):
+        urls = []
+        urls.append(url_path)
+        try:
+            loader = UnstructuredURLLoader(urls)
+            docs = loader.load()
+            insert_logger.info(f"UnstructuredURLLoader success: {url_path}")
+            return docs
+        except Exception:
+            insert_logger.error(f"UnstructuredURLLoader error: {url_path}, {traceback.format_exc()}")
+            return []
+        
+    def load_xml(file_path):
+        try:
+            loader = UnstructuredXMLLoader(file_path)
+            docs = loader.load()
+            insert_logger.info(f"UnstructuredXMLLoader success: {file_path}")
+            return docs
+        except Exception:
+            insert_logger.error(f"UnstructuredXMLLoader error: {file_path}, {traceback.format_exc()}")
+            return []
+    
     # 将file文件变成Document类型
     @get_time
     def split_file_to_docs(self):
         # 处理txt
         if self.file_path.lower().endswith(".txt"):
             docs = self.load_text(self.file_path)
+        elif self.file_path.lower().endswith(".pdf"):
+            docs = self.load_pdf(self.file_path)
+        elif self.file_path.lower().endswith(".md"):
+            docs = self.load_md(self.file_path)
+        elif self.file_path.lower().endswith(".docx"):
+            docs = self.load_docx(self.file_path)
+        elif self.file_path.lower().endswith(".doc"):
+            docs = self.load_doc(self.file_path)
+        elif self.file_path.lower().endswith(".html"):
+            docs = self.load_html(self.file_path)
+        elif self.file_path.lower().endswith((".ppt", ".pptx")):
+            docs = self.load_ppt(self.file_path)
+        elif self.file_path.lower().endswith(".url"):
+            docs = self.load_url(self.file_path)
+        elif self.file_path.lower().endswith(".xml"):
+            docs = self.load_xml(self.file_path)
         # 
         else:
             raise TypeError("文件类型不支持，目前仅支持：[txt]")
