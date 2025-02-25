@@ -48,12 +48,12 @@ async def init_qa_handler(app, loop):
     qa_handler = QAHandler(args.port)
     qa_handler.init_cfg(args)
     end = time.time()
-    print(f'init local_doc_qa cost {end - start}s', flush=True)
+    print(f'init local_doc_qa cost {(end - start):.4f} seconds', flush=True)
     app.ctx.qa_handler = qa_handler
     
 @app.after_server_start
 async def notify_server_started(app, loop):
-    print(f"Server Start Cost {time.time() - start_time} seconds", flush=True)
+    print(f"Server Start Cost {(time.time() - start_time):.4f} seconds", flush=True)
 
 @app.after_server_start
 async def start_server_and_open_browser(app, loop):
