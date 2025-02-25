@@ -3,7 +3,7 @@ sanic==23.6.0
 sanic_ext==23.6.0
 onnxruntime==1.17.1
 numpy==1.24.3
-transformers==4.48.0
+transformers==4.46.1
 langchain-core==0.1.50
 langchain==0.1.9
 langchain-openai==0.0.8
@@ -12,3 +12,4 @@ mysql-connector-python==8.2.0
 pymilvus==2.4.2
 chardet==5.2.0
 aiomysql==0.2.0
+pytorch==2.2.0

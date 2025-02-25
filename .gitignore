@@ -5,3 +5,4 @@ logs
 bce_model
 configs.py
 file_store
+record.log

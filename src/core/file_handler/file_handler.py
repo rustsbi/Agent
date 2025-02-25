@@ -1,7 +1,6 @@
 import copy
 import os
 import sys
-import time
 current_script_path = os.path.abspath(__file__)
 # 将项目根目录添加到sys.path
 root_dir = os.path.dirname(os.path.dirname(os.path.dirname(current_script_path)))
@@ -166,7 +165,7 @@ class FileHandler:
         child_splitter = RecursiveCharacterTextSplitter(
             separators=SEPARATORS,
             chunk_size=child_chunk_size,
-            chunk_overlap=int(child_chunk_size / 4),
+            chunk_overlap=int(child_chunk_size / 3),
             length_function=num_tokens_embed)
         # 先处理父文档，父文档没有重叠部分每一个都是单独的
         # documents = self.parent_splitter.split_documents(documents)
@@ -204,7 +203,7 @@ class FileHandler:
                 _doc.metadata["doc_id"] = _id
                 # _doc.page_content = f"[headers]({_doc.metadata['headers']})\n" + _doc.page_content  # 存入page_content，向量检索时会带上headers
             documents.extend(sub_docs)
-            # 先不加下面的，后面要用再说
+            # TODO: 先不加下面的，后面要用再说
             # doc.page_content = f"[headers]({doc.metadata['headers']})\n" + doc.page_content  # 存入page_content，等检索后rerank时会带上headers信息
             # 用来存储每个完整的片段
             full_documents.append((_id, doc))
@@ -220,7 +219,7 @@ class FileHandler:
             del doc.metadata['page_id']
         # full_documents用来记录每一个父片段
         # 返回可以通用
-        return embed_documents
+        return embed_documents, full_documents
 
 
 

@@ -1,5 +1,8 @@
+import asyncio
 import os
 import sys
+
+from elasticsearch import Elasticsearch,exceptions
 # 获取当前脚本的绝对路径
 current_script_path = os.path.abspath(__file__)
 
@@ -7,22 +10,42 @@ current_script_path = os.path.abspath(__file__)
 root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_script_path))))
 root_dir = os.path.dirname(root_dir)
 sys.path.append(root_dir)
-from src.utils.log_handler import debug_logger, insert_logger
+from src.utils.log_handler import debug_logger
 from src.configs.configs import ES_USER, ES_PASSWORD, ES_URL, ES_INDEX_NAME
 from langchain_elasticsearch import ElasticsearchStore
 
 
+
 class ESClient:
     def __init__(self):
-        self.es_store = ElasticsearchStore(
-            es_url=ES_URL,
-            index_name=ES_INDEX_NAME,
-            es_user=ES_USER,
-            es_password=ES_PASSWORD,
-            # 检索策略使用BM25
-            strategy=ElasticsearchStore.BM25RetrievalStrategy()
-        )
-        debug_logger.info(f"Init ElasticSearchStore with index_name: {ES_INDEX_NAME}")
+        try:
+            es_client = Elasticsearch(
+                hosts=[ES_URL],
+                basic_auth=(ES_USER, ES_PASSWORD),
+                verify_certs=False,
+                ssl_show_warn=False,
+                retry_on_timeout=True,
+                max_retries=3,
+                timeout=30
+            )
+
+            # 初始化 ElasticsearchStore
+            self.es_store = ElasticsearchStore(
+                es_connection=es_client,
+                index_name=ES_INDEX_NAME,
+                strategy=ElasticsearchStore.BM25RetrievalStrategy()
+            )
+
+            debug_logger.info(f"Init ElasticSearchStore with index_name: {ES_INDEX_NAME}")
+        except exceptions.ConnectionError as e:
+            debug_logger.error(f"ES connection error: {e}")
+            raise
+        except exceptions.AuthenticationException as e:
+            debug_logger.error(f"ES authentication failed: {e}")
+            raise
+        except Exception as e:
+            debug_logger.error(f"Unexpected error initializing ES client: {e}")
+            raise
 
     def delete(self, docs_ids):
         try:
@@ -38,3 +61,11 @@ class ESClient:
             docs_ids.extend([file_id + '_' + str(i) for i in range(file_chunk)])
         if docs_ids:
             self.delete(docs_ids)
+
+async def main():
+    es_client = ESClient()
+    filter = [{"terms": {"metadata.kb_id.keyword": ["KBbf9488a498cf4407a6abdf477208c3ed"]}}]
+    es_sub_docs = await es_client.es_store.asimilarity_search("路上只我一个人", top_k=10, filter=filter)
+    print(es_sub_docs)
+
+asyncio.run(main())

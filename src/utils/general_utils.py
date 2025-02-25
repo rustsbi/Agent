@@ -74,6 +74,15 @@ def safe_get(req: Request, attr: str, default=None):
         logging.warning(traceback.format_exc())
     return default
 
+def deduplicate_documents(source_docs):
+    unique_docs = set()
+    deduplicated_docs = []
+    for doc in source_docs:
+        if doc.page_content not in unique_docs:
+            unique_docs.add(doc.page_content)
+            deduplicated_docs.append(doc)
+    return deduplicated_docs
+
 def validate_user_id(user_id):
     if len(user_id) > 64:
         return False
@@ -172,6 +181,10 @@ rerank_tokenizer = AutoTokenizer.from_pretrained(RERANK_MODEL_PATH)
 def num_tokens_embed(text: str) -> int:
     """返回字符串的Token数量"""
     return len(embedding_tokenizer.encode(text, add_special_tokens=True))
+
+def num_tokens_rerank(text: str) -> int:
+    """Return the number of tokens in a string."""
+    return len(rerank_tokenizer.encode(text, add_special_tokens=True))
 
 def fast_estimate_file_char_count(file_path):
     """
