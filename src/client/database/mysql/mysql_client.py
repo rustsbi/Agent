@@ -295,34 +295,57 @@ class MysqlClient:
         self.execute_query_(query, (kb_id, user_id, kb_name), commit=True)
         return kb_id, "success"
     # 获取知识库中的文件
-    def get_files(self, kb_id, file_id=None):
-        limit = 100
-        offset = 0
-        all_files = []
+    def get_files(self, user_id, kb_id, file_id=None):
+        """
+        根据 user_id 和 kb_id 查询文件信息，并支持按照 file_id 精确查找。
+        兼容旧设计，避免产生其他问题
 
+        参数:
+            user_id (str): 用户 ID。
+            kb_id (str): 知识库 ID。
+            file_id (str, optional): 文件 ID，如果提供则按照精确匹配查找。
+
+        返回:
+            list: 查询到的文件信息列表。
+        """
+        # DEBUG
+        print("get_files, user_id: ", user_id, "kb_id: ", kb_id, "file_id: ", file_id)
+        limit = 100  # 每次查询的记录数
+        offset = 0  # 分页偏移量
+        all_files = []  # 存储所有检索到的文件信息
+
+        # 基础 SQL 查询
         base_query = """
             SELECT file_id, file_name, status, file_size, content_length, timestamp,
-                   file_location, file_url, chunk_size, msg
+                file_location, file_url, chunk_size, msg
             FROM File
-            WHERE kb_id = %s AND deleted = 0
+            WHERE user_id = %s AND kb_id = %s AND deleted = 0
         """
 
-        params = [kb_id]
+        # 查询参数
+        params = [user_id, kb_id]
+
+        # 如果提供了 file_id，则添加 file_id 的过滤条件，并直接返回结果
         if file_id is not None:
-            base_query += " AND file_id=%s"
+            base_query += " AND file_id = %s"
             params.append(file_id)
             files = self.execute_query_(base_query, params, fetch=True)
             return files
-        # 更好的利用数据库连接池中的多个连接
+
+        # 分页查询：逐步加载数据以避免一次性加载大批量数据
         while True:
-            query = base_query + "LIMIT %s AND OFFSET %s"
+            query = base_query + " LIMIT %s OFFSET %s"
             current_params = params + [limit, offset]
             files = self.execute_query_(query, current_params, fetch=True)
+
+            # 如果没有更多数据，退出循环
             if not files:
                 break
+
+            # 将当前页的数据追加到结果列表
             all_files.extend(files)
-            offset += limit
-        
+            offset += limit  # 增加偏移量以加载下一批数据
+
         return all_files
     # 查看文件是否存在
     def check_file_exist_by_name(self, user_id, kb_id, file_names):

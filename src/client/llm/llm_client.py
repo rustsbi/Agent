@@ -198,7 +198,7 @@ async def main():
 ---
 请根据上述参考信息回答我的问题或回复我的指令。前面的参考信息可能有用，也可能没用，你需要从我给出的参考信息中选出与我的问题最相关的那些，来为你的回答提供依据。回答一定要忠于原文，简洁但不丢信息，不要胡乱编造。我的问题或指令是什么语种，你就用什么语种回复,
 你的回复："""
-    final_result = ""
+    final_result = "TEST OUTPUT: "
     async for answer_result in llm.generatorAnswer(prompt=prompt, history=chat_history, streaming=streaming):
         resp = answer_result.llm_output["answer"]
         if "DONE" not in resp:
@@ -206,6 +206,7 @@ async def main():
         debug_logger.info(resp)
 
     debug_logger.info(f"final_result = {final_result}")
+    return final_result
     
 
 if __name__ == "__main__":
