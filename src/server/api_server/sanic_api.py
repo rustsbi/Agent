@@ -70,7 +70,7 @@ app.add_route(document, "/api/docs", methods=['GET'])
 app.add_route(health_check, "/api/health_check", methods=['GET'])  # tags=["健康检查"]
 app.add_route(new_knowledge_base, "/api/qa_handler/new_knowledge_base", methods=['POST'])  # tags=["新建知识库"]
 app.add_route(upload_files, "/api/qa_handler/upload_files", methods=['POST'])  # tags=["上传文件"]
-# app.add_route(local_doc_chat, "/api/local_doc_qa/local_doc_chat", methods=['POST'])  # tags=["问答接口"] 
+app.add_route(local_doc_chat, "/api/local_doc_qa/local_doc_chat", methods=['POST'])  # tags=["问答接口"] 
 # app.add_route(list_kbs, "/api/local_doc_qa/list_knowledge_base", methods=['POST'])  # tags=["知识库列表"] 
 # app.add_route(list_docs, "/api/local_doc_qa/list_files", methods=['POST'])  # tags=["文件列表"]
 # app.add_route(get_total_status, "/api/local_doc_qa/get_total_status", methods=['POST'])  # tags=["获取所有知识库状态数据库"]

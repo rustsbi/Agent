@@ -5,6 +5,15 @@ import logging
 from aiohttp import ClientError
 from asyncio import TimeoutError
 import os
+import sys
+
+# 获取当前脚本的绝对路径
+current_script_path = os.path.abspath(__file__)
+# 将项目根目录添加到sys.path
+root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_script_path))))
+sys.path.append(root_dir)
+
+from src.configs.configs import DEFAULT_API_BASE, DEFAULT_API_KEY
 
 class AsyncHTTPClient:
     def __init__(self, retries: int = 3, timeout: int = 10):
@@ -136,13 +145,47 @@ async def test_upload_files(file_path: str):
             # 确保关闭所有打开的文件
             f.close()
 
+async def test_local_doc_chat():
+    async with AsyncHTTPClient(retries=3, timeout=30) as client:
+        try:
+            # 模拟请求参数
+            payload = {
+                "user_id": "abc1234",
+                "user_info": "5678",
+                "kb_ids": ["KBbf9488a498cf4407a6abdf477208c3ed"],  # 替换为实际的知识库ID
+                "question": "请问这个知识库的主要内容是什么？",
+                "history": [],
+                "streaming": False,  # 设置为False以获取完整回答
+                "rerank": True,
+                "custom_prompt": None,
+                "api_base": DEFAULT_API_BASE,  # 替换为实际API地址
+                "api_key": DEFAULT_API_KEY,  # 替换为实际API密钥
+                "top_p": 0.99,
+                "temperature": 0.7,
+                "top_k": 5
+            }
 
+            # 发送POST请求
+            response = await client.request(
+                method="POST",
+                url="http://127.0.0.1:8777/api/local_doc_qa/local_doc_chat",
+                json=payload,
+                headers={"Content-Type": "application/json"}
+            )
+
+            # 打印返回结果
+            print("Response from local_doc_chat:")
+            print(response)
+
+        except Exception as e:
+            logging.error(f"Request to local_doc_chat failed: {str(e)}")
 
 def run_test():    
     # asyncio.run(test_document())
     # asyncio.run(test_health_check())
     # asyncio.run(test_new_knowledge_base())
     asyncio.run(test_upload_files('./这是一个测试文件.txt'))
+    asyncio.run(test_local_doc_chat())
 
 # asyncio.run(test_upload_files('./这是一个测试文件.txt'))
 

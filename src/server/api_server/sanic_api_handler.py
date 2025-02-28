@@ -314,7 +314,7 @@ async def local_doc_chat(req: request):
     if len(kb_ids) > 20:
         return sanic_json({"code": 2005, "msg": "fail, kb_ids length should less than or equal to 20"})
     
-    kb_ids = [correct_kb_id(kb_id) for kb_id in kb_ids]
+    # kb_ids = [correct_kb_id(kb_id) for kb_id in kb_ids]
     question = safe_get(req, 'question')
     streaming = safe_get(req, 'streaming', False)
     history = safe_get(req, 'history', [])
@@ -371,10 +371,13 @@ async def local_doc_chat(req: request):
         if not_exist_kb_ids:
             return sanic_json({"code": 2003, "msg": "fail, knowledge Base {} not found".format(not_exist_kb_ids)})
     
+    # print("DEBUG: ", user_id, kb_ids)
+    
     file_infos = []
     for kb_id in kb_ids:
         file_infos.extend(qa_handler.mysql_client.get_files(user_id, kb_id))
-
+        
+    # print("DEBUG: ", file_infos)
     valid_files = [fi for fi in file_infos if fi[2] == 'green']
     if len(valid_files) == 0:
         debug_logger.info("valid_files is empty, use only chat mode.")
