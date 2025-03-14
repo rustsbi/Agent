@@ -151,6 +151,7 @@ async def test_local_doc_chat():
             # 模拟请求参数
             payload = {
                 "user_id": "abc1234",
+                "max_token": 3000,
                 "user_info": "5678",
                 "kb_ids": ["KBbf9488a498cf4407a6abdf477208c3ed"],  # 替换为实际的知识库ID
                 "question": "请问这个知识库的主要内容是什么？",
@@ -160,6 +161,7 @@ async def test_local_doc_chat():
                 "custom_prompt": None,
                 "api_base": DEFAULT_API_BASE,  # 替换为实际API地址
                 "api_key": DEFAULT_API_KEY,  # 替换为实际API密钥
+                "api_context_length": 10000,
                 "top_p": 0.99,
                 "temperature": 0.7,
                 "top_k": 5
@@ -184,7 +186,7 @@ def run_test():
     # asyncio.run(test_document())
     # asyncio.run(test_health_check())
     # asyncio.run(test_new_knowledge_base())
-    asyncio.run(test_upload_files('./这是一个测试文件.txt'))
+    # asyncio.run(test_upload_files('./这是一个测试文件.txt'))
     asyncio.run(test_local_doc_chat())
 
 # asyncio.run(test_upload_files('./这是一个测试文件.txt'))

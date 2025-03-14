@@ -55,7 +55,6 @@ class SBIRerank:
             if res is None:
                 return source_documents
             all_scores[start_index:start_index + batch_size] = res
-            print(res)
 
         for idx, score in enumerate(all_scores):
             source_documents[idx].metadata['score'] = round(float(score), 2)

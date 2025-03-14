@@ -147,7 +147,7 @@ class MilvusClient:
                 if kb_ids:
                     # 获取所有现有分区
                     existing_partitions = list(self.sess.partitions)
-                    print(existing_partitions)
+                    # print(existing_partitions)
                     existing_partitions = [p.name for p in existing_partitions]           
                     # 构造要搜索的分区名称列表
                     partition_names = [kb_id for kb_id in kb_ids]
@@ -256,7 +256,6 @@ def main():
             return
 
         print(f"Found {len(results)} documents in collection {user_id}:")
-        print(results)
         for i, result in enumerate(results):
             continue
             print(f"\nDocument {i + 1}:")

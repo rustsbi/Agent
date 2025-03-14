@@ -1,0 +1,1 @@
+nohup python rerank_server.py  > record.log 2>&1 &

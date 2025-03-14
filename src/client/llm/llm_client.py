@@ -9,6 +9,8 @@ current_script_path = os.path.abspath(__file__)
 root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_script_path))))
 
 sys.path.append(root_dir)
+
+from src.utils.general_utils import my_print
 import traceback
 from openai import OpenAI
 from typing import AsyncGenerator, List, Optional
@@ -188,7 +190,7 @@ class OpenAILLM:
 
 async def main():
     llm = OpenAILLM(DEFAULT_MODEL_PATH, 8000, DEFAULT_API_BASE, DEFAULT_API_KEY, DEFAULT_API_CONTEXT_LENGTH, 0.5, 0.5)
-    streaming = True
+    streaming = False
     chat_history = []
     prompt = """参考信息：
 中央纪委国家监委网站讯 据山西省纪委监委消息：山西转型综合改革示范区党工委副书记、管委会副主任董良涉嫌严重违纪违法，目前正接受山西省纪委监委纪律审查和监察调查。\\u3000\\u3000董良简历\\u3000\\u3000董良，男，汉族，1964年8月生，河南鹿邑人，在职研究生学历，邮箱random@xxx.com，联系电话131xxxxx909，1984年3月加入中国共产党，1984年8月参加工作\\u3000\\u3000历任太原经济技术开发区管委会副主任、太原武宿综合保税区专职副主任，山西转型综合改革示范区党工委委员、管委会副主任。2021年8月，任山西转型综合改革示范区党工委副书记、管委会副主任。(山西省纪委监委)
@@ -201,6 +203,7 @@ async def main():
     final_result = "TEST OUTPUT: "
     async for answer_result in llm.generatorAnswer(prompt=prompt, history=chat_history, streaming=streaming):
         resp = answer_result.llm_output["answer"]
+        # resp结构，是一个str   data: {"answer": "良，男，汉族，1964年8月生"}
         if "DONE" not in resp:
             final_result += json.loads(resp[6:])["answer"]
         debug_logger.info(resp)

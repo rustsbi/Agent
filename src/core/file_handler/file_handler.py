@@ -6,7 +6,6 @@ current_script_path = os.path.abspath(__file__)
 root_dir = os.path.dirname(os.path.dirname(os.path.dirname(current_script_path)))
 root_dir = os.path.dirname(root_dir)
 sys.path.append(root_dir)
-print(root_dir)
 from src.utils.general_utils import get_time, num_tokens_embed, \
      clear_string
 from typing import List

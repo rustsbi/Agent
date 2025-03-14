@@ -15,6 +15,7 @@ sys.path.append(root_dir)
 from sanic_api_handler import *
 from src.core.qa_handler import QAHandler
 from src.utils.log_handler import debug_logger, qa_logger
+from src.utils.general_utils import my_print
 from sanic.worker.manager import WorkerManager
 from sanic import Sanic
 from sanic_ext import Extend
