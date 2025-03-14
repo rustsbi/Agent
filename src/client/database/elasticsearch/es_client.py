@@ -62,10 +62,10 @@ class ESClient:
         if docs_ids:
             self.delete(docs_ids)
 
-async def main():
-    es_client = ESClient()
-    filter = [{"terms": {"metadata.kb_id.keyword": ["KBbf9488a498cf4407a6abdf477208c3ed"]}}]
-    es_sub_docs = await es_client.es_store.asimilarity_search("路上只我一个人", top_k=10, filter=filter)
-    print(es_sub_docs)
+# async def main():
+#     es_client = ESClient()
+#     filter = [{"terms": {"metadata.kb_id.keyword": ["KBbf9488a498cf4407a6abdf477208c3ed"]}}]
+#     es_sub_docs = await es_client.es_store.asimilarity_search("路上只我一个人", top_k=10, filter=filter)
+#     print(es_sub_docs)
 
-asyncio.run(main())
+# asyncio.run(main())

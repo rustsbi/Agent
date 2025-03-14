@@ -240,7 +240,7 @@ async def upload_files(req: request):
             file_handler.embs.append(textvec)
             qa_handler.milvus_client.store_doc(doc, textvec)
         # 打印切好的子块
-        print(file_handler.docs)
+        # print(file_handler.docs)
         # 将切分好的子块存入es数据库中
         if qa_handler.es_client is not None:
             try:
@@ -277,6 +277,7 @@ GATEWAY_IP = os.getenv("GATEWAY_IP", "localhost")
 debug_logger.info(f"GATEWAY_IP: {GATEWAY_IP}")
 @get_time_async
 async def local_doc_chat(req: request):
+    # 具体就是获取一些参数之类的
     preprocess_start = time.perf_counter()
     qa_handler: QAHandler = req.app.ctx.qa_handler
     # 开始处理所需要的参数
@@ -366,6 +367,7 @@ async def local_doc_chat(req: request):
     debug_logger.info("hybrid_search: %s", hybrid_search)
     debug_logger.info("chunk_size: %s", chunk_size)
 
+    qa_handler.milvus_client.load_collection_(user_id)
     if kb_ids:
         not_exist_kb_ids = qa_handler.mysql_client.check_kb_exist(user_id, kb_ids)
         if not_exist_kb_ids:
@@ -475,6 +477,7 @@ async def local_doc_chat(req: request):
             response_stream = ResponseStream(generate_answer, content_type='text/event-stream')
             return response_stream
     else:
+        # 进行检索生成回答
         async for resp, history in qa_handler.get_knowledge_based_answer(model=model,
                                                                            max_token=max_token,
                                                                            kb_ids=kb_ids,
@@ -495,23 +498,24 @@ async def local_doc_chat(req: request):
                                                                            top_p=top_p,
                                                                            top_k=top_k
                                                                            ):
-            pass
-        if only_need_search_results:
-            return sanic_json(
-                {"code": 200, "question": question, "source_documents": format_source_documents(resp)})
-        retrieval_documents = format_source_documents(resp["retrieval_documents"])
-        source_documents = format_source_documents(resp["source_documents"])
-        formatted_time_record = format_time_record(time_record)
-        chat_data = {'user_id': user_id, 'kb_ids': kb_ids, 'query': question, 'time_record': formatted_time_record,
-                     'history': history, "condense_question": resp['condense_question'], "model": model,
-                     "product_source": request_source,
-                     'retrieval_documents': retrieval_documents, 'prompt': resp['prompt'], 'result': resp['result'],
-                     'source_documents': source_documents}
-        qa_handler.mysql_client.add_qalog(**chat_data)
-        debug_logger.info("chat_data: %s", chat_data)
-        debug_logger.info("response: %s", chat_data['result'])
-        return sanic_json({"code": 200, "msg": "success no stream chat", "question": question,
-                           "response": resp["result"], "model": model,
-                           "history": history, "condense_question": resp['condense_question'],
-                           "source_documents": source_documents, "retrieval_documents": retrieval_documents,
-                           "time_record": formatted_time_record})
+            # 如果只需要检索到的文档
+            if only_need_search_results:
+                return sanic_json(
+                    {"code": 200, "question": question, "source_documents": format_source_documents(resp)})
+            # 格式化检索到的文档信息
+            retrieval_documents = format_source_documents(resp["retrieval_documents"])
+            source_documents = format_source_documents(resp["source_documents"])
+            formatted_time_record = format_time_record(time_record)
+            chat_data = {'user_id': user_id, 'kb_ids': kb_ids, 'query': question, 'time_record': formatted_time_record,
+                        'history': history, "condense_question": resp['condense_question'], "model": model,
+                        "product_source": request_source,
+                        'retrieval_documents': retrieval_documents, 'prompt': resp['prompt'], 'result': resp['result'],
+                        'source_documents': source_documents}
+            # qa_handler.mysql_client.add_qalog(**chat_data)
+            debug_logger.info("chat_data: %s", chat_data)
+            debug_logger.info("response: %s", chat_data['result'])
+            return sanic_json({"code": 200, "msg": "success no stream chat", "question": question,
+                            "response": resp["result"], "model": model,
+                            "history": history, "condense_question": resp['condense_question'],
+                            "source_documents": source_documents, "retrieval_documents": retrieval_documents,
+                            "time_record": formatted_time_record})

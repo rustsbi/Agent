@@ -1,7 +1,9 @@
 import time
-from functools import wraps  # 添加这行导入
+from functools import wraps
+
+import tiktoken  # 添加这行导入
 from src.utils.log_handler import debug_logger, embed_logger, rerank_logger
-from src.configs.configs import KB_SUFFIX, EMBED_MODEL_PATH, RERANK_MODEL_PATH
+from src.configs.configs import DEFAULT_MODEL_PATH, KB_SUFFIX, EMBED_MODEL_PATH, RERANK_MODEL_PATH
 from sanic.request import Request
 from sanic.exceptions import BadRequest
 import logging
@@ -178,6 +180,12 @@ def clear_string(str):
 
 embedding_tokenizer = AutoTokenizer.from_pretrained(EMBED_MODEL_PATH)
 rerank_tokenizer = AutoTokenizer.from_pretrained(RERANK_MODEL_PATH)
+llm_tokenizer = AutoTokenizer.from_pretrained(DEFAULT_MODEL_PATH)
+
+def num_tokens(text: str) -> int:
+    """Return the number of tokens in a string."""
+    return len(llm_tokenizer.encode(text))
+
 def num_tokens_embed(text: str) -> int:
     """返回字符串的Token数量"""
     return len(embedding_tokenizer.encode(text, add_special_tokens=True))
@@ -212,3 +220,50 @@ def fast_estimate_file_char_count(file_path):
     except Exception as e:
         print(f"Error processing file {file_path}: {str(e)}")
         return None
+
+def my_print(str):
+        # 获取调用栈
+    frame = inspect.currentframe()
+    # 上一层frame是调用当前函数的函数
+    caller_frame = frame.f_back
+    
+    # 获取调用者信息
+    caller_filename = caller_frame.f_code.co_filename
+    caller_function = caller_frame.f_code.co_name
+    caller_lineno = caller_frame.f_lineno
+    
+    # 清理frame引用以避免引用循环
+    del frame
+
+    print(f"I was called by {caller_function} in file {caller_filename} at line {caller_lineno}")
+    print(str)
+
+# 将图片引用地址转换为服务器所存图片引用地址
+def replace_image_references(text, file_id):
+    lines = text.split('\n')
+    result = []
+
+    # 匹配带标题的图片引用
+    pattern_with_caption = r'^!\[figure\]\((.+\.jpg)\s+(.+)\)$'
+    # 匹配不带标题的图片引用
+    pattern_without_caption = r'^!\[figure\]\((.+\.jpg)\)$'
+
+    for line in lines:
+        if not line.startswith('![figure]'):
+            result.append(line)
+            continue
+
+        match_with_caption = re.match(pattern_with_caption, line)
+        match_without_caption = re.match(pattern_without_caption, line)
+        if match_with_caption:
+            image_path, caption = match_with_caption.groups()
+            debug_logger.info(f"line: {line}, caption: {caption}")
+            result.append(f"#### {caption}")
+            result.append(f"![figure](/home/zzh/Agent/file_store/image_store/{file_id}/{image_path})")
+        elif match_without_caption:
+            image_path = match_without_caption.group(1)
+            result.append(f"![figure](/home/zzh/Agent/file_store/image_store/{file_id}/{image_path})")
+        else:
+            result.append(line)
+
+    return '\n'.join(result)

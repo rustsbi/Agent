@@ -411,3 +411,11 @@ class MysqlClient:
             # 将数据转换为JSON字符串
             json_data = json.dumps(doc_data, ensure_ascii=False)
             self.execute_query_(query, (id, json_data), commit=True)
+    
+    def is_deleted_file(self, file_id):
+        query = "SELECT deleted FROM File WHERE file_id = %s"
+        result = self.execute_query_(query, (file_id,), fetch=True)
+        if result:
+            return result[0][0] == 1
+        else:
+            return False
