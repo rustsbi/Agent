@@ -85,7 +85,7 @@ class FileHandler:
         insert_logger.error(f"Failed to load file with all attempted encodings: {file_path}")
         return []
     
-    def load_pdf(file_path):
+    def load_pdf(self, file_path):
         try:
             loader = PyPDFLoader(file_path)
             docs = loader.load()
@@ -95,7 +95,7 @@ class FileHandler:
             insert_logger.error(f"PyPDFLoader error: {file_path}, {traceback.format_exc()}")
             return []
         
-    def load_md(file_path):
+    def load_md(self, file_path):
         try:
             loader = UnstructuredMarkdownLoader(file_path, mode="elements")
             docs = loader.load()
@@ -105,7 +105,7 @@ class FileHandler:
             insert_logger.error(f"UnstructuredMarkdownLoader error: {file_path}, {traceback.format_exc()}")
             return []
         
-    def load_docx(file_path):
+    def load_docx(self, file_path):
         try:
             loader = Docx2txtLoader(file_path)
             docs = loader.load()
@@ -115,7 +115,7 @@ class FileHandler:
             insert_logger.error(f"UnstructuredDocxLoader error: {file_path}, {traceback.format_exc()}")
             return []
         
-    def load_img(file_path):
+    def load_img(self, file_path):
         try:
             loader = UnstructuredImageLoader(file_path)
             docs = loader.load()
@@ -125,7 +125,7 @@ class FileHandler:
             insert_logger.error(f"UnstructuredImageLoader error: {file_path}, {traceback.format_exc()}")
             return []
     
-    def load_html(file_path):
+    def load_html(self, file_path):
         try:
             loader = UnstructuredHTMLLoader(file_path)
             docs = loader.load()
@@ -135,7 +135,7 @@ class FileHandler:
             insert_logger.error(f"UnstructuredHTMLLoader error: {file_path}, {traceback.format_exc()}")
             return []
         
-    def load_ppt(file_path):
+    def load_ppt(self, file_path):
         try:
             loader = UnstructuredPowerPointLoader(file_path)
             docs = loader.load()
@@ -145,7 +145,7 @@ class FileHandler:
             insert_logger.error(f"UnstructuredPowerPointLoader error: {file_path}, {traceback.format_exc()}")
             return []
         
-    def load_url(url_path):
+    def load_url(self, url_path):
         urls = []
         urls.append(url_path)
         try:
@@ -157,7 +157,7 @@ class FileHandler:
             insert_logger.error(f"UnstructuredURLLoader error: {url_path}, {traceback.format_exc()}")
             return []
         
-    def load_xml(file_path):
+    def load_xml(self, file_path):
         try:
             loader = UnstructuredXMLLoader(file_path)
             docs = loader.load()
