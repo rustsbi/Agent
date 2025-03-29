@@ -191,4 +191,5 @@ def run_test():
 
 # asyncio.run(test_upload_files('./这是一个测试文件.txt'))
 
-run_test()
+if __name__ == "__main__":
+    run_test()
