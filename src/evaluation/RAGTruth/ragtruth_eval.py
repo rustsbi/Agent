@@ -44,6 +44,7 @@ async def build_response(file_path):
 
     with open(file_path, "r", encoding="utf-8") as f:
         for i, line in enumerate(f):
+            print(f"Processing line {i}...")
             response = {}
             data = json.loads(line)
             task_type = data['task_type']
@@ -79,21 +80,22 @@ async def build_response(file_path):
                 print("final_result:\n")
                 print(final_result)
                 print('-'*20 + '\n' * 1)
-                break
+                break # 加这个break是为了防止重复输出相同的结果。
             response['task_type'] = task_type
             response['source_info'] = source_info
             response['response'] = final_result
 
-            response_list.append(response)
     
-    response_file_path = os.path.join(current_dir_path, "model_response", f"response{DEFAULT_MODEL_NAME}.jsonl")
+    response_file_path = os.path.join(current_dir_path,"model_response", f"response-{DEFAULT_MODEL_NAME}.jsonl")
     with open(response_file_path, "w", encoding="utf-8") as f:
         for response in response_list:
             f.write(json.dumps(response, ensure_ascii=False) + "\n")
 
     debug_logger.info(f"final_result = {final_result}")
 
-async def eval_single_response(response_file_path):
+
+async def eval_response():
+    response_file_path = os.path.join(current_dir_path, "model_response", f"response-{DEFAULT_MODEL_NAME}.jsonl")
     prompt_template = f"You are a judge tasked with determining whether text generation contains hallucinations. \
                     Based on the given task type, source_info (source information), and response (the generated reply), \
                     please judge whether the content of the reply is consistent with the source information.\
@@ -105,6 +107,7 @@ async def eval_single_response(response_file_path):
 
     with open(response_file_path, "r", encoding="utf-8") as f:
         for i, line in enumerate(f):
+            print(f"Processing line {i}...")
             response = json.loads(line)
             task_type = response['task_type']
             source_info = response['source_info']
@@ -136,17 +139,14 @@ async def eval_single_response(response_file_path):
             response['eval_result'] = resp
             eval_list.append(response)
 
-    eval_file_path = os.path.join(current_dir_path, f"eval-{DEFAULT_MODEL_NAME}.jsonl")
+    eval_file_path = os.path.join(current_dir_path, "eval_files", f"eval-{DEFAULT_MODEL_NAME}.jsonl")
     with open(eval_file_path, "w", encoding="utf-8") as f:
         for response in eval_list:
             f.write(json.dumps(response, ensure_ascii=False) + "\n")
 
-async def eval_response():
-    response_file_path = os.path.join(current_dir_path, "model_response","response-Qwen2.5-7B-Instruct.jsonl")
-    result = await eval_single_response(response_file_path)
     return result
 
-async def eval_response():
+async def cal_hallu_cnt():
     hallu_cnt = 0
     eval_file_path = os.path.join(current_dir_path, "eval-Qwen2.5-7B-Instruct.jsonl")
     with open(eval_file_path, "r", encoding="utf-8") as f:
@@ -155,8 +155,11 @@ async def eval_response():
             if not response['eval_result'].startswith("no"):
                 hallu_cnt += 1
     print(f"hallu_cnt = {hallu_cnt}")
+    print(f"hallu_rate: {hallu_cnt / 303}")
 
 
 if __name__ == "__main__":
-    # result = asyncio.run(build_response(source_info_path))
-    result = asyncio.run(eval_response())
+    print(f"Use model {DEFAULT_MODEL_NAME}\n")
+    result = asyncio.run(build_response(source_info_path))
+    # result = asyncio.run(eval_response())
+    cal_hallu_cnt()
