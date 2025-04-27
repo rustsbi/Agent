@@ -6,5 +6,6 @@ bce_model
 configs.py
 file_store
 record.log
+vllm_record.log
 test_results_short.json
 test_results.json
