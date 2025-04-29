@@ -1,11 +1,15 @@
 src/parse/db/*
 *.onnx
+*.log
 __pycache__
 logs
 bce_model
 configs.py
+configs.*
 file_store
 record.log
 vllm_record.log
 test_results_short.json
 test_results.json
+test_results*
+test_questions*
