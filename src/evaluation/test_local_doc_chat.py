@@ -23,7 +23,7 @@ async def local_doc_chat(question):
                 "user_id": "abc1234",
                 "max_token": 3000,
                 "user_info": "5678",
-                "kb_ids": ["KBbf9488a498cf4407a6abdf477208c3ed"],  # 替换为实际的知识库ID
+                "kb_ids": ["KB2ed627becda34af0a85cb1d104d90ebb"],  # 替换为实际的知识库ID
                 "question": question,
                 "history": [],
                 "streaming": False,  # 设置为False以获取完整回答
@@ -61,5 +61,5 @@ question = "概括一下文段的主要内容"
 question = "采莲赋的内容是什么"
 question = "'莲南塘秋，莲花过人头；低头弄莲子，莲子清如水。'这首词出自哪里 "
 question = "这段文字描述的是哪个季节的场景？"
-question = "文中提到的“妖童媛女”在做什么？"
+# question = "文中提到的“妖童媛女”在做什么？"
 asyncio.run(local_doc_chat(question))
