@@ -129,7 +129,7 @@ async def test_upload_files(file_path: str):
             # 添加其他字段
             form_data.add_field('user_id', 'abc1234')
             form_data.add_field('user_info', '5678')
-            form_data.add_field('kb_id', 'KBbf9488a498cf4407a6abdf477208c3ed')
+            form_data.add_field('kb_id', 'KB2ed627becda34af0a85cb1d104d90ebb')
             form_data.add_field('mode', 'soft')
 
             # 发送请求
@@ -186,8 +186,8 @@ def run_test():
     # asyncio.run(test_document())
     # asyncio.run(test_health_check())
     # asyncio.run(test_new_knowledge_base())
-    # asyncio.run(test_upload_files('./这是一个测试文件.txt'))
-    asyncio.run(test_local_doc_chat())
+    asyncio.run(test_upload_files('./这是一个测试文件.txt'))
+    # asyncio.run(test_local_doc_chat())
 
 # asyncio.run(test_upload_files('./这是一个测试文件.txt'))
 
