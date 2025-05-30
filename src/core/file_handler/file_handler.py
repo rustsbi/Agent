@@ -179,8 +179,8 @@ class FileHandler:
             docs = self.load_md(self.file_path)
         elif self.file_path.lower().endswith(".docx"):
             docs = self.load_docx(self.file_path)
-        elif self.file_path.lower().endswith(".doc"):
-            docs = self.load_doc(self.file_path)
+        # elif self.file_path.lower().endswith(".doc"): # TODO: load_doc
+        #     docs = self.load_doc(self.file_path)
         elif self.file_path.lower().endswith(".html"):
             docs = self.load_html(self.file_path)
         elif self.file_path.lower().endswith((".ppt", ".pptx")):
