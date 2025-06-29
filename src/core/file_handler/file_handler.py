@@ -70,129 +70,166 @@ class FileHandler:
         return pre_page_id
 
     @staticmethod
-    def load_text(file_path):
+    def load_text(self):
+        """
+        加载文本文件。
+        """
         encodings = ['utf-8', 'iso-8859-1', 'windows-1252']
 
         for encoding in encodings:
             try:
-                loader = TextLoader(file_path, encoding=encoding)
+                loader = TextLoader(self.file_location, encoding=encoding)
                 docs = loader.load()
-                insert_logger.info(f"TextLoader {encoding} success: {file_path}")
+                insert_logger.info(f"TextLoader {encoding} success: {self.file_location}")
                 return docs
             except Exception:
-                insert_logger.warning(f"TextLoader {encoding} error: {file_path}, {traceback.format_exc()}")
+                insert_logger.warning(f"TextLoader {encoding} error: {self.file_location}, {traceback.format_exc()}")
 
-        insert_logger.error(f"Failed to load file with all attempted encodings: {file_path}")
+        insert_logger.error(f"Failed to load file with all attempted encodings: {self.file_location}")
         return []
-    
-    def load_pdf(self, file_path):
+
+    def load_pdf(self):
+        """
+        加载PDF文件。
+        """
+        loader = PyPDFLoader(self.file_location)
+        return loader.load()
+
+    def load_md(self):
+        """
+        加载Markdown文件。
+        """
         try:
-            loader = PyPDFLoader(file_path)
+            loader = UnstructuredMarkdownLoader(self.file_location, mode="elements")
             docs = loader.load()
-            insert_logger.info(f"PyPDFLoader success: {file_path}")
+            insert_logger.info(f"UnstructuredMarkdownLoader success: {self.file_location}")
             return docs
         except Exception:
-            insert_logger.error(f"PyPDFLoader error: {file_path}, {traceback.format_exc()}")
+            insert_logger.error(f"UnstructuredMarkdownLoader error: {self.file_location}, {traceback.format_exc()}")
             return []
-        
-    def load_md(self, file_path):
+
+    def load_docx(self):
+        """
+        加载Docx文件。
+        """
         try:
-            loader = UnstructuredMarkdownLoader(file_path, mode="elements")
+            loader = Docx2txtLoader(self.file_location)
             docs = loader.load()
-            insert_logger.info(f"UnstructuredMarkdownLoader success: {file_path}")
+            insert_logger.info(f"Docx2txtLoader success: {self.file_location}")
             return docs
         except Exception:
-            insert_logger.error(f"UnstructuredMarkdownLoader error: {file_path}, {traceback.format_exc()}")
+            insert_logger.error(f"Docx2txtLoader error: {self.file_location}, {traceback.format_exc()}")
             return []
-        
-    def load_docx(self, file_path):
+
+    def load_doc(self):
+        """
+        加载旧版.doc文件（需要额外实现）。
+        """
+        insert_logger.error(f"尚未明确实现加载 .doc 文件的方法。请为 {self.file_location} 添加适当的加载器。")
+        return []
+
+    def load_img(self):
+        """
+        加载图片文件。
+        """
         try:
-            loader = Docx2txtLoader(file_path)
+            loader = UnstructuredImageLoader(self.file_location)
             docs = loader.load()
-            insert_logger.info(f"UnstructuredDocxLoader success: {file_path}")
+            insert_logger.info(f"UnstructuredImageLoader success: {self.file_location}")
             return docs
         except Exception:
-            insert_logger.error(f"UnstructuredDocxLoader error: {file_path}, {traceback.format_exc()}")
+            insert_logger.error(f"UnstructuredImageLoader error: {self.file_location}, {traceback.format_exc()}")
             return []
-        
-    def load_img(self, file_path):
+
+    def load_html(self):
+        """
+        加载HTML文件。
+        """
         try:
-            loader = UnstructuredImageLoader(file_path)
+            loader = UnstructuredHTMLLoader(self.file_location)
             docs = loader.load()
-            insert_logger.info(f"UnstructuredImageLoader success: {file_path}")
+            insert_logger.info(f"UnstructuredHTMLLoader success: {self.file_location}")
             return docs
         except Exception:
-            insert_logger.error(f"UnstructuredImageLoader error: {file_path}, {traceback.format_exc()}")
+            insert_logger.error(f"UnstructuredHTMLLoader error: {self.file_location}, {traceback.format_exc()}")
             return []
-    
-    def load_html(self, file_path):
+
+    def load_ppt(self):
+        """
+        加载PPT文件。
+        """
         try:
-            loader = UnstructuredHTMLLoader(file_path)
+            loader = UnstructuredPowerPointLoader(self.file_location)
             docs = loader.load()
-            insert_logger.info(f"UnstructuredHTMLLoader success: {file_path}")
+            insert_logger.info(f"UnstructuredPowerPointLoader success: {self.file_location}")
             return docs
         except Exception:
-            insert_logger.error(f"UnstructuredHTMLLoader error: {file_path}, {traceback.format_exc()}")
+            insert_logger.error(f"UnstructuredPowerPointLoader error: {self.file_location}, {traceback.format_exc()}")
             return []
-        
-    def load_ppt(self, file_path):
+
+    def load_url(self):
+        """
+        加载URL内容。
+        """
+        urls = [self.file_location]  # UnstructuredURLLoader 期望一个URL列表
         try:
-            loader = UnstructuredPowerPointLoader(file_path)
+            loader = UnstructuredURLLoader(urls=urls)
             docs = loader.load()
-            insert_logger.info(f"UnstructuredPowerPointLoader success: {file_path}")
+            insert_logger.info(f"UnstructuredURLLoader success: {self.file_location}")
             return docs
         except Exception:
-            insert_logger.error(f"UnstructuredPowerPointLoader error: {file_path}, {traceback.format_exc()}")
+            insert_logger.error(f"UnstructuredURLLoader error: {self.file_location}, {traceback.format_exc()}")
             return []
-        
-    def load_url(self, url_path):
-        urls = []
-        urls.append(url_path)
+
+    def load_xml(self):
+        """
+        加载XML文件。
+        """
         try:
-            loader = UnstructuredURLLoader(urls)
+            loader = UnstructuredXMLLoader(self.file_location)
             docs = loader.load()
-            insert_logger.info(f"UnstructuredURLLoader success: {url_path}")
+            insert_logger.info(f"UnstructuredXMLLoader success: {self.file_location}")
             return docs
         except Exception:
-            insert_logger.error(f"UnstructuredURLLoader error: {url_path}, {traceback.format_exc()}")
+            insert_logger.error(f"UnstructuredXMLLoader error: {self.file_location}, {traceback.format_exc()}")
             return []
-        
-    def load_xml(self, file_path):
-        try:
-            loader = UnstructuredXMLLoader(file_path)
-            docs = loader.load()
-            insert_logger.info(f"UnstructuredXMLLoader success: {file_path}")
-            return docs
-        except Exception:
-            insert_logger.error(f"UnstructuredXMLLoader error: {file_path}, {traceback.format_exc()}")
-            return []
-    
-    # 将file文件变成Document类型
+
+    ## 文件内容加载与处理
+
     @get_time
     def split_file_to_docs(self):
-        # 处理txt
-        if self.file_path.lower().endswith(".txt"):
-            docs = self.load_text(self.file_path)
-        elif self.file_path.lower().endswith(".pdf"):
-            docs = self.load_pdf(self.file_path)
-        elif self.file_path.lower().endswith(".md"):
-            docs = self.load_md(self.file_path)
-        elif self.file_path.lower().endswith(".docx"):
-            docs = self.load_docx(self.file_path)
-        # elif self.file_path.lower().endswith(".doc"): # TODO: load_doc
-        #     docs = self.load_doc(self.file_path)
-        elif self.file_path.lower().endswith(".html"):
-            docs = self.load_html(self.file_path)
-        elif self.file_path.lower().endswith((".ppt", ".pptx")):
-            docs = self.load_ppt(self.file_path)
-        elif self.file_path.lower().endswith(".url"):
-            docs = self.load_url(self.file_path)
-        elif self.file_path.lower().endswith(".xml"):
-            docs = self.load_xml(self.file_path)
-        # 
+        """
+        根据文件类型将文件内容加载为文档对象列表。
+        """
+        print(f"self.file_path: {self.file_path}\n")
+        docs = []
+
+        # 根据文件扩展名处理文件
+        file_extension = self.file_path.lower()
+        if file_extension.endswith(".txt"):
+            docs = self.load_text()
+        elif file_extension.endswith(".pdf"):
+            docs = self.load_pdf()
+        elif file_extension.endswith(".md"):
+            docs = self.load_md()
+        elif file_extension.endswith(".docx"):
+            docs = self.load_docx()
+        elif file_extension.endswith(".doc"):
+            docs = self.load_doc()  # 调用占位方法
+        elif file_extension.endswith(".html"):
+            docs = self.load_html()
+        elif file_extension.endswith((".ppt", ".pptx")):
+            docs = self.load_ppt()
+        elif file_extension.endswith(".url"):
+            docs = self.load_url()
+        elif file_extension.endswith(".xml"):
+            docs = self.load_xml()
+        elif file_extension.endswith((".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff")): # 假设图片文件处理
+            docs = self.load_img()
         else:
-            raise TypeError("文件类型不支持，目前仅支持：[txt]")
-        # 注入一些属性后，保存在self.docs中 
+            raise TypeError("文件类型不支持。目前支持：[txt, pdf, md, docx, doc, html, ppt, pptx, url, xml, 图片文件]")
+
+        # 注入一些属性，并保存在 self.docs 中
         self.inject_metadata(docs)
 
     def inject_metadata(self, docs: List[Document]):
