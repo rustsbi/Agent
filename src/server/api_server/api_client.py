@@ -153,7 +153,7 @@ async def test_local_doc_chat():
                 "user_id": "abc1234",
                 "max_token": 3000,
                 "user_info": "5678",
-                "kb_ids": ["KBbf9488a498cf4407a6abdf477208c3ed"],  # 替换为实际的知识库ID
+                "kb_ids": ["KB02b6b16ef5f64432876601b99831ab68"],  # 替换为实际的知识库ID
                 "question": "请问这个知识库的主要内容是什么？",
                 "history": [],
                 "streaming": False,  # 设置为False以获取完整回答
@@ -182,12 +182,31 @@ async def test_local_doc_chat():
         except Exception as e:
             logging.error(f"Request to local_doc_chat failed: {str(e)}")
 
+async def test_list_kbs():
+    async with AsyncHTTPClient(retries=3, timeout=10) as client:
+        try:
+            payload = {
+                "user_id": "abc1234",
+                "user_info": "5678"
+            }
+            data = await client.request(
+                'POST', # 根据 sanic_api.py 中的路由方法
+                'http://127.0.0.1:8777/api/qa_handler/list_knowledge_base',
+                json=payload,
+                headers={'Content-Type': 'application/json'}
+            )
+            print("List Knowledge Bases Response:")
+            print(data)
+        except Exception as e:
+            logging.error(f"Request to list_kbs failed: {str(e)}")
+
 def run_test():    
     # asyncio.run(test_document())
     # asyncio.run(test_health_check())
     # asyncio.run(test_new_knowledge_base())
-    asyncio.run(test_upload_files('./这是一个测试文件.txt'))
+    # asyncio.run(test_upload_files('./这是一个测试文件.txt'))
     asyncio.run(test_local_doc_chat())
+    # asyncio.run(test_list_kbs())
 
 # asyncio.run(test_upload_files('./这是一个测试文件.txt'))
 
