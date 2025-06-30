@@ -519,3 +519,12 @@ async def local_doc_chat(req: request):
                             "history": history, "condense_question": resp['condense_question'],
                             "source_documents": source_documents, "retrieval_documents": retrieval_documents,
                             "time_record": formatted_time_record})
+
+@get_time_async
+async def list_kbs(req: request):
+    """
+    Placeholder: This function is intended to list all knowledge bases for a given user.
+    The actual implementation for querying the database and returning the list
+    needs to be added here.
+    """
+    return sanic_json({"code": 200, "msg": "success", "data": []})
