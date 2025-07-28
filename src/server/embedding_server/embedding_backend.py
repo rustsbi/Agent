@@ -1,13 +1,15 @@
 import numpy as np
 import time
+import traceback
 from typing import List, Union
 from numpy import ndarray
 import torch
 from torch import Tensor
 from onnxruntime import InferenceSession, SessionOptions, GraphOptimizationLevel
-from src.configs.configs import LOCAL_EMBED_MODEL_PATH, LOCAL_EMBED_PATH, LOCAL_EMBED_BATCH, LOCAL_RERANK_MAX_LENGTH,EMBED_MODEL_PATH
+from src.configs.configs import LOCAL_EMBED_MODEL_PATH, LOCAL_EMBED_BATCH, LOCAL_RERANK_MAX_LENGTH, EMBED_MODEL_PATH
 from src.utils.log_handler import debug_logger
 from transformers import AutoTokenizer
+
 
 class EmbeddingBackend:
     def __init__(self, use_cpu: bool = False):
@@ -31,20 +33,30 @@ class EmbeddingBackend:
             providers = ['CUDAExecutionProvider', 'CPUExecutionProvider']
         # 这行代码创建了一个ONNX模型的推理会话，是ONNX Runtime的核心组件。
         # 路径.onnx为后缀的文件，这是转换自其他深度学习框架（如PyTorch、TensorFlow、Transformer）的模型
-        self._session = InferenceSession(LOCAL_EMBED_MODEL_PATH, sess_options=sess_options, providers=providers)
-        debug_logger.info(f"EmbeddingClient: model_path: {LOCAL_EMBED_MODEL_PATH}")
+        self._session = InferenceSession(
+            LOCAL_EMBED_MODEL_PATH, sess_options=sess_options, providers=providers)
+
+        # 动态获取输出名称，支持不同的模型格式
+        self._output_names = [o.name for o in self._session.get_outputs()]
+        debug_logger.info(
+            f"EmbeddingClient: model_path: {LOCAL_EMBED_MODEL_PATH}")
+        debug_logger.info(
+            f"EmbeddingClient: output_names: {self._output_names}")
     # 获取文本嵌入向量
+
     def get_embedding(self, sentences, max_length):
         #                            输入文本列表  填充到最长序列 截断超长序列      最大序列长度            返回数组类型，numpy数组
         # 文本标记化
-        inputs_onnx = self._tokenizer(sentences, padding=True, truncation=True, max_length=max_length, return_tensors=self.return_tensors)
+        inputs_onnx = self._tokenizer(sentences, padding=True, truncation=True,
+                                      max_length=max_length, return_tensors=self.return_tensors)
         # 将tokenizer输出转换为字典形式
         # 通常包含 'input_ids', 'attention_mask' 等键值对
         inputs_onnx = {k: v for k, v in inputs_onnx.items()}
         # 记录开始时间
         start_time = time.time()
         # 模型推理
-        outputs_onnx = self._session.run(output_names=['output'], input_feed=inputs_onnx)
+        outputs_onnx = self._session.run(
+            output_names=self._output_names, input_feed=inputs_onnx)
         debug_logger.info(f"onnx infer time: {time.time() - start_time}")
         # outputs_onnx[0]: 获取第一个（也是唯一的）输出
         #  [:,0]使用numpy切片，选择所有样本的[CLS]标记对应的向量
@@ -54,7 +66,7 @@ class EmbeddingBackend:
         # 假设输入两个句子，模型输出形状为[2, 512, 768]
         # outputs_onnx[0]  # 形状：[2, 512, 768]
         # outputs_onnx[0][:,0]  # 形状：[2, 768]
-        embedding = outputs_onnx[0][:,0]
+        embedding = outputs_onnx[0][:, 0]
         debug_logger.info(f'embedding shape: {embedding.shape}')
         # 计算l2范数
         norm_arr = np.linalg.norm(embedding, axis=1, keepdims=True)
@@ -81,7 +93,7 @@ class EmbeddingBackend:
                 # 确保输入数据同步
                 io_binding.synchronize_inputs()
                 # 绑定输出
-                io_binding.bind_output('output')
+                io_binding.bind_output(self._output_names[0])
                 # 使用IO binding执行推理
                 self._session.run_with_iobinding(io_binding)
                 # 确保输出数据同步
@@ -90,7 +102,9 @@ class EmbeddingBackend:
                 outputs_onnx = io_binding.copy_outputs_to_cpu()
                 io_binding.clear_binding_inputs()
                 io_binding.clear_binding_outputs()
-            except:
+            except Exception as e:
+                debug_logger.error(f"ONNX 推理异常 (尝试 {3-try_num}/2): {str(e)}")
+                debug_logger.error(f"异常详情: {traceback.format_exc()}")
                 outputs_onnx = None
             try_num -= 1
         # 返回结果
@@ -117,23 +131,26 @@ class EmbeddingBackend:
         using_time_tokenizer = 0
         using_time_model = 0
         # batch数，向上取整
-        total_batch = len(sentence) // batch_size + (1 if len(sentence) % batch_size > 0 else 0)
+        total_batch = len(sentence) // batch_size + \
+            (1 if len(sentence) % batch_size > 0 else 0)
         # 开始处理batch
         for batch_id in range(total_batch):
             start_time_tokenizer = time.time()
             # 如果指定了标记化的tokenizer
             if tokenizer is not None:
                 inputs = tokenizer(
-                    sentence[batch_id * batch_size:(batch_id + 1) * batch_size],
+                    sentence[batch_id *
+                             batch_size:(batch_id + 1) * batch_size],
                     padding=True,
                     truncation=True,
                     max_length=max_length,
                     return_tensors="np"
                 )
             else:
-            # 如果没指定就用默认的
+                # 如果没指定就用默认的
                 inputs = self._tokenizer(
-                    sentence[batch_id * batch_size:(batch_id + 1) * batch_size],
+                    sentence[batch_id *
+                             batch_size:(batch_id + 1) * batch_size],
                     padding=True,
                     truncation=True,
                     max_length=max_length,
@@ -142,7 +159,8 @@ class EmbeddingBackend:
             using_time_tokenizer += (time.time() - start_time_tokenizer)
             # 这行代码计算实际的token数量，减去了特殊token（如[CLS]和[SEP]）的数
             if return_tokens_num:
-                tokens_num += (inputs['attention_mask'].sum().item() - 2 * inputs['attention_mask'].shape[0])
+                tokens_num += (inputs['attention_mask'].sum().item() -
+                               2 * inputs['attention_mask'].shape[0])
 
             inputs = {k: v for k, v in inputs.items()}
 
@@ -150,11 +168,16 @@ class EmbeddingBackend:
             # 执行推理
             outputs_onnx = self.inference(inputs)
             using_time_model += (time.time() - start_time_model)
+
             # 和get_embedding函数一样，看上面注释
+            if outputs_onnx is None or outputs_onnx[0] is None:
+                debug_logger.error(f"ONNX 推理失败，outputs_onnx[0] 为 None")
+                raise RuntimeError("ONNX 推理失败，outputs_onnx[0] 为 None")
             embeddings = np.asarray(outputs_onnx[0][:, 0])
             # 如果需要正则化
             if normalize_to_unit:
-                embeddings = embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)
+                embeddings = embeddings / \
+                    np.linalg.norm(embeddings, axis=1, keepdims=True)
             embedding_list.append(embeddings)
         # # 合并np数组
         # embedding_list = [
@@ -174,7 +197,7 @@ class EmbeddingBackend:
         embeddings = np.concatenate(embedding_list, axis=0)
         # 当输入是单个句子且不需要保持维度时
         # 去掉第一个维度，从2D变为1D
-        # 例如：从形状(1, 768)变为(768,)  
+        # 例如：从形状(1, 768)变为(768,)
         if single_sentence and not keepdim:
             embeddings = embeddings[0]
         # 如果不需要返回numpy数组且当前是numpy数组
@@ -194,6 +217,7 @@ class EmbeddingBackend:
         else:
             return embeddings
     # 对给定queries
+
     def predict(self, queries, return_tokens_num=False):
         print(queries)
         embeddings = self.encode(
