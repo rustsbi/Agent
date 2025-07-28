@@ -1,4 +1,23 @@
 
+from src.configs.configs import VECTOR_SEARCH_SCORE_THRESHOLD, CUSTOM_PROMPT_TEMPLATE, \
+    SYSTEM, PROMPT_TEMPLATE, INSTRUCTIONS, SIMPLE_PROMPT_TEMPLATE, \
+    QUERY_REWRITE_ENABLED, QUERY_REWRITE_TARGET_LANG
+from src.utils.general_utils import deduplicate_documents, num_tokens, num_tokens_rerank, my_print, replace_image_references
+from src.core.chains.condense_q_chain import RewriteQuestionChain
+from src.client.llm.llm_client import OpenAILLM
+from src.core.query_rewrite.pipeline import QueryRewritePipeline
+from langchain.schema import Document
+from langchain.schema.messages import AIMessage, HumanMessage
+from urllib3.util import Retry
+from requests.adapters import HTTPAdapter
+import requests
+from src.core.retriever.retriever import Retriever
+from src.client.database.elasticsearch.es_client import ESClient
+from src.client.database.milvus.milvus_client import MilvusClient
+from src.client.database.mysql.mysql_client import MysqlClient
+from src.utils.log_handler import debug_logger
+from src.client.rerank.client import SBIRerank
+from src.client.embedding.embedding_client import SBIEmbeddings
 import json
 import re
 import sys
@@ -9,27 +28,10 @@ from typing import List, Tuple
 # 获取当前脚本的绝对路径
 current_script_path = os.path.abspath(__file__)
 # 将项目根目录添加到sys.path
-root_dir = os.path.dirname(os.path.dirname(os.path.dirname(current_script_path)))
+root_dir = os.path.dirname(os.path.dirname(
+    os.path.dirname(current_script_path)))
 sys.path.append(root_dir)
 
-from src.client.embedding.embedding_client import SBIEmbeddings
-from src.client.rerank.client import SBIRerank
-from src.configs.configs import VECTOR_SEARCH_SCORE_THRESHOLD, CUSTOM_PROMPT_TEMPLATE,\
-    SYSTEM, PROMPT_TEMPLATE, INSTRUCTIONS, SIMPLE_PROMPT_TEMPLATE
-from src.utils.log_handler import debug_logger
-from src.client.database.mysql.mysql_client import MysqlClient
-from src.client.database.milvus.milvus_client import MilvusClient
-from src.client.database.elasticsearch.es_client import ESClient
-from src.core.retriever.retriever import Retriever
-import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util import Retry
-from langchain.schema.messages import AIMessage, HumanMessage
-from langchain.schema import Document
-from src.client.llm.llm_client import OpenAILLM
-from src.core.chains.condense_q_chain import RewriteQuestionChain
-
-from src.utils.general_utils import deduplicate_documents, num_tokens, num_tokens_rerank, my_print, replace_image_references
 
 class QAHandler:
     def __init__(self, port):
@@ -49,12 +51,12 @@ class QAHandler:
         #     chunk_overlap=0,
         #     length_function=len
         # )
-    
+
     @staticmethod
     def create_retry_session(retries, backoff_factor):
         """
         创建一个带有重试机制的 requests Session
-        
+
         参数：
         retries: int - 重试次数
         backoff_factor: float - 重试间隔因子
@@ -74,7 +76,7 @@ class QAHandler:
         session.mount('http://', adapter)
         session.mount('https://', adapter)
         return session
-    
+
     def init_cfg(self, args=None):
         self.embeddings = SBIEmbeddings()
         self.rerank = SBIRerank()
@@ -82,7 +84,12 @@ class QAHandler:
         self.milvus_client = MilvusClient()
         self.es_client = ESClient()
         self.retriever = Retriever()
-        
+        # 初始化query_rewrite pipeline
+        if QUERY_REWRITE_ENABLED:
+            self.query_rewrite_pipeline = QueryRewritePipeline()
+        else:
+            self.query_rewrite_pipeline = None
+
     async def get_source_documents(self, query, retriever: Retriever, kb_ids, time_record, hybrid_search, top_k):
         source_documents = []
         start_time = time.perf_counter()
@@ -90,35 +97,75 @@ class QAHandler:
                                                              hybrid_search=hybrid_search, top_k=top_k)
         end_time = time.perf_counter()
         time_record['retriever_search'] = round(end_time - start_time, 2)
-        debug_logger.info(f"retriever_search time: {time_record['retriever_search']}s")
+        debug_logger.info(
+            f"retriever_search time: {time_record['retriever_search']}s")
         # debug_logger.info(f"query_docs num: {len(query_docs)}, query_docs: {query_docs}")
         for idx, doc in enumerate(query_docs):
             if self.mysql_client.is_deleted_file(doc.metadata['file_id']):
-                debug_logger.warning(f"file_id: {doc.metadata['file_id']} is deleted")
+                debug_logger.warning(
+                    f"file_id: {doc.metadata['file_id']} is deleted")
                 continue
             doc.metadata['retrieval_query'] = query  # 添加查询到文档的元数据中
             if 'score' not in doc.metadata:
-                doc.metadata['score'] = 1 - (idx / len(query_docs))  # TODO 这个score怎么获取呢
+                doc.metadata['score'] = 1 - \
+                    (idx / len(query_docs))  # TODO 这个score怎么获取呢
             source_documents.append(doc)
-        debug_logger.info(f"embed scores: {[doc.metadata['score'] for doc in source_documents]}")
+        debug_logger.info(
+            f"embed scores: {[doc.metadata['score'] for doc in source_documents]}")
         # if cosine_thresh:
         #     source_documents = [item for item in source_documents if float(item.metadata['score']) > cosine_thresh]
 
         return source_documents
-    
+
+    def process_query_rewrite(self, query: str, time_record: dict) -> str:
+        """
+        简单的查询重写处理，返回处理后的查询
+        """
+        if not self.query_rewrite_pipeline:
+            return query
+
+        try:
+            t1 = time.perf_counter()
+            debug_logger.info(f"Processing query rewrite for: {query}")
+
+            # 使用query_rewrite pipeline处理查询
+            result = self.query_rewrite_pipeline.process(
+                query, target_lang=QUERY_REWRITE_TARGET_LANG)
+
+            # 优先使用翻译后的查询，如果没有翻译则使用原始查询
+            processed_query = result['translated'] if result['translated'] else query
+
+            t2 = time.perf_counter()
+            time_record['query_rewrite'] = round(t2 - t1, 2)
+            debug_logger.info(
+                f"Query rewrite completed in {time_record['query_rewrite']}s")
+            debug_logger.info(
+                f"Original query: {query} -> Processed query: {processed_query}")
+
+            return processed_query
+
+        except Exception as e:
+            debug_logger.error(f"Query rewrite error: {e}")
+            time_record['query_rewrite'] = 0.0
+            return query
+
     def reprocess_source_documents(self, custom_llm: OpenAILLM, query: str,
-                    source_docs: List[Document],
-                    history: List[str],
-                    prompt_template: str) -> Tuple[List[Document], int, str]:
+                                   source_docs: List[Document],
+                                   history: List[str],
+                                   prompt_template: str) -> Tuple[List[Document], int, str]:
         # 组装prompt,根据max_token
         query_token_num = int(custom_llm.num_tokens_from_messages([query]) * 4)
-        history_token_num = int(custom_llm.num_tokens_from_messages([x for sublist in history for x in sublist]))
-        template_token_num = int(custom_llm.num_tokens_from_messages([prompt_template]))
+        history_token_num = int(custom_llm.num_tokens_from_messages(
+            [x for sublist in history for x in sublist]))
+        template_token_num = int(
+            custom_llm.num_tokens_from_messages([prompt_template]))
         # 计算引用所消耗的token
         reference_field_token_num = int(custom_llm.num_tokens_from_messages(
             [f"<reference>[{idx + 1}]</reference>" for idx in range(len(source_docs))]))
         # 计算还能容纳多少token的doc，之后往里面填充doc
-        limited_token_nums = custom_llm.token_window - custom_llm.max_token - custom_llm.offcut_token - query_token_num - history_token_num - template_token_num - reference_field_token_num
+        limited_token_nums = custom_llm.token_window - custom_llm.max_token - custom_llm.offcut_token - \
+            query_token_num - history_token_num - \
+            template_token_num - reference_field_token_num
 
         debug_logger.info(f"=============================================")
         debug_logger.info(f"token_window = {custom_llm.token_window}")
@@ -126,7 +173,8 @@ class QAHandler:
         debug_logger.info(f"offcut_token = {custom_llm.offcut_token}")
         debug_logger.info(f"limited token nums: {limited_token_nums}")
         debug_logger.info(f"template token nums: {template_token_num}")
-        debug_logger.info(f"reference_field token nums: {reference_field_token_num}")
+        debug_logger.info(
+            f"reference_field token nums: {reference_field_token_num}")
         debug_logger.info(f"query token nums: {query_token_num}")
         debug_logger.info(f"history token nums: {history_token_num}")
         debug_logger.info(f"=============================================")
@@ -155,9 +203,12 @@ class QAHandler:
                 not_repeated_file_ids.append(file_id)
                 if 'headers' in doc.metadata:
                     headers = f"headers={doc.metadata['headers']}"
-                    headers_token_num = custom_llm.num_tokens_from_messages([headers])
-            doc_valid_content = re.sub(r'!\[figure]\(.*?\)', '', doc.page_content)
-            doc_token_num = custom_llm.num_tokens_from_messages([doc_valid_content])
+                    headers_token_num = custom_llm.num_tokens_from_messages([
+                                                                            headers])
+            doc_valid_content = re.sub(
+                r'!\[figure]\(.*?\)', '', doc.page_content)
+            doc_token_num = custom_llm.num_tokens_from_messages(
+                [doc_valid_content])
             doc_token_num += headers_token_num
             if total_token_num + doc_token_num <= limited_token_nums:
                 new_source_docs.append(doc)
@@ -165,10 +216,11 @@ class QAHandler:
             else:
                 break
 
-        debug_logger.info(f"new_source_docs token nums: {custom_llm.num_tokens_from_docs(new_source_docs)}")
+        debug_logger.info(
+            f"new_source_docs token nums: {custom_llm.num_tokens_from_docs(new_source_docs)}")
         # 返回新的doc列表，给doc剩余的token数量，token计算的信息
         return new_source_docs, limited_token_nums, tokens_msg
-    
+
     @staticmethod
     async def generate_response(query, res, condense_question, source_documents, time_record, chat_history, streaming, prompt):
         """
@@ -214,13 +266,15 @@ class QAHandler:
             response['result'] = "data: [DONE]\n\n"
             yield response, history
     # 生成prompt
+
     def generate_prompt(self, query, source_docs, prompt_template):
         if source_docs:
             context = ''
             not_repeated_file_ids = []
             for doc in source_docs:
                 # 生成prompt时去掉图片
-                doc_valid_content = re.sub(r'!\[figure]\(.*?\)', '', doc.page_content)
+                doc_valid_content = re.sub(
+                    r'!\[figure]\(.*?\)', '', doc.page_content)
                 file_id = doc.metadata['file_id']
                 # 如果这个file_id是第一次遇到
                 if file_id not in not_repeated_file_ids:
@@ -232,25 +286,30 @@ class QAHandler:
                     # 如果有headers则加入headers， 没有的话只加入内容
                     if 'headers' in doc.metadata:
                         headers = f"headers={doc.metadata['headers']}"
-                        context += f"<reference {headers}>[{len(not_repeated_file_ids)}]" + '\n' + doc_valid_content + '\n'
+                        context += f"<reference {headers}>[{len(not_repeated_file_ids)}]" + \
+                            '\n' + doc_valid_content + '\n'
                     else:
-                        context += f"<reference>[{len(not_repeated_file_ids)}]" + '\n' + doc_valid_content + '\n'
+                        context += f"<reference>[{len(not_repeated_file_ids)}]" + \
+                            '\n' + doc_valid_content + '\n'
                 else:
                     # 如果file_id不是第一次处理
                     context += doc_valid_content + '\n'
             context += '</reference>\n'
 
             # prompt = prompt_template.format(context=context).replace("{{question}}", query)
-            prompt = prompt_template.replace("{{context}}", context).replace("{{question}}", query)
+            prompt = prompt_template.replace(
+                "{{context}}", context).replace("{{question}}", query)
         else:
             prompt = prompt_template.replace("{{question}}", query)
         return prompt
 
     async def prepare_source_documents(self, custom_llm: OpenAILLM, retrieval_documents: List[Document],
                                        limited_token_nums: int, rerank: bool):
-        debug_logger.info(f"retrieval_documents len: {len(retrieval_documents)}")
+        debug_logger.info(
+            f"retrieval_documents len: {len(retrieval_documents)}")
         try:
-            new_docs = self.aggregate_documents(retrieval_documents, limited_token_nums, custom_llm, rerank)
+            new_docs = self.aggregate_documents(
+                retrieval_documents, limited_token_nums, custom_llm, rerank)
             if new_docs:
                 source_documents = new_docs
             else:
@@ -258,16 +317,20 @@ class QAHandler:
                 merged_documents_file_ids = []
                 for doc in retrieval_documents:
                     if doc.metadata['file_id'] not in merged_documents_file_ids:
-                        merged_documents_file_ids.append(doc.metadata['file_id'])
+                        merged_documents_file_ids.append(
+                            doc.metadata['file_id'])
                 source_documents = []
                 for file_id in merged_documents_file_ids:
-                    docs = [doc for doc in retrieval_documents if doc.metadata['file_id'] == file_id]
-                    docs = sorted(docs, key=lambda x: int(x.metadata['doc_id'].split('_')[-1]))
+                    docs = [
+                        doc for doc in retrieval_documents if doc.metadata['file_id'] == file_id]
+                    docs = sorted(docs, key=lambda x: int(
+                        x.metadata['doc_id'].split('_')[-1]))
                     source_documents.extend(docs)
 
             # source_documents = self.incomplete_table(source_documents, limited_token_nums, custom_llm)
         except Exception as e:
-            debug_logger.error(f"aggregate_documents error w/ {e}: {traceback.format_exc()}")
+            debug_logger.error(
+                f"aggregate_documents error w/ {e}: {traceback.format_exc()}")
             source_documents = retrieval_documents
 
         debug_logger.info(f"source_documents len: {len(source_documents)}")
@@ -279,11 +342,20 @@ class QAHandler:
                                          only_need_search_results: bool = False, need_web_search=False,
                                          hybrid_search=False):
         # 创建与大模型交互句柄
-        custom_llm = OpenAILLM(model, max_token, api_base, api_key, api_context_length, top_p, temperature)
+        custom_llm = OpenAILLM(model, max_token, api_base,
+                               api_key, api_context_length, top_p, temperature)
         if chat_history is None:
             chat_history = []
-        retrieval_query = query
-        condense_question = query
+
+        # 在最开始进行query_rewrite处理
+        if QUERY_REWRITE_ENABLED and self.query_rewrite_pipeline:
+            debug_logger.info("Processing query rewrite...")
+            processed_query = self.process_query_rewrite(query, time_record)
+            retrieval_query = processed_query
+            condense_question = processed_query
+        else:
+            retrieval_query = query
+            condense_question = query
         # 如果有对话历史就将对话历史和query结合进行query重写
         if chat_history:
             formatted_chat_history = []
@@ -293,9 +365,11 @@ class QAHandler:
                     HumanMessage(content=msg[0]),
                     AIMessage(content=msg[1]),
                 ]
-            debug_logger.info(f"formatted_chat_history: {formatted_chat_history}")
+            debug_logger.info(
+                f"formatted_chat_history: {formatted_chat_history}")
 
-            rewrite_q_chain = RewriteQuestionChain(model_name=model, openai_api_base=api_base, openai_api_key=api_key)
+            rewrite_q_chain = RewriteQuestionChain(
+                model_name=model, openai_api_base=api_base, openai_api_key=api_key)
             # 将对话历史和查询输入到对话模版中
             full_prompt = rewrite_q_chain.condense_q_prompt.format(
                 chat_history=formatted_chat_history,
@@ -322,17 +396,20 @@ class QAHandler:
                 t2 = time.perf_counter()
                 # 时间保留两位小数
                 time_record['condense_q_chain'] = round(t2 - t1, 2)
-                time_record['rewrite_completion_tokens'] = custom_llm.num_tokens_from_messages([condense_question])
-                debug_logger.info(f"condense_q_chain time: {time_record['condense_q_chain']}s")
+                time_record['rewrite_completion_tokens'] = custom_llm.num_tokens_from_messages([
+                                                                                               condense_question])
+                debug_logger.info(
+                    f"condense_q_chain time: {time_record['condense_q_chain']}s")
             except Exception as e:
                 debug_logger.error(f"condense_q_chain error: {e}")
                 condense_question = query
             debug_logger.info(f"condense_question: {condense_question}")
-            time_record['rewrite_prompt_tokens'] = custom_llm.num_tokens_from_messages([full_prompt, condense_question])
+            time_record['rewrite_prompt_tokens'] = custom_llm.num_tokens_from_messages(
+                [full_prompt, condense_question])
         # 如果有kb_ids那么需要对重写后的查询进行向量检索
         if kb_ids:
             source_documents = await self.get_source_documents(retrieval_query, retriever, kb_ids, time_record,
-                                                            hybrid_search, top_k)
+                                                               hybrid_search, top_k)
         else:
             source_documents = []
         # 这里处理网络搜索
@@ -365,39 +442,46 @@ class QAHandler:
 
         #     t2 = time.perf_counter()
         #     time_record['web_search'] = round(t2 - t1, 2)
-        
+
         # 对检索的内容进行rerank
         # 将检索内容进行去重
         source_documents = deduplicate_documents(source_documents)
         if rerank and len(source_documents) > 1 and num_tokens_rerank(query) <= 300:
             try:
                 t1 = time.perf_counter()
-                debug_logger.info(f"use rerank, rerank docs num: {len(source_documents)}")
+                debug_logger.info(
+                    f"use rerank, rerank docs num: {len(source_documents)}")
                 source_documents = await self.rerank.arerank_documents(condense_question, source_documents)
                 t2 = time.perf_counter()
                 time_record['rerank'] = round(t2 - t1, 2)
                 # 过滤掉低分的文档
                 debug_logger.info(f"rerank step1 num: {len(source_documents)}")
-                debug_logger.info(f"rerank step1 scores: {[doc.metadata['score'] for doc in source_documents]}")
+                debug_logger.info(
+                    f"rerank step1 scores: {[doc.metadata['score'] for doc in source_documents]}")
                 if len(source_documents) > 1:
                     # 如果没有大于等于0.28的分数则保留
                     if filtered_documents := [doc for doc in source_documents if doc.metadata['score'] >= 0.28]:
                         source_documents = filtered_documents
-                    debug_logger.info(f"rerank step2 num: {len(source_documents)}")
+                    debug_logger.info(
+                        f"rerank step2 num: {len(source_documents)}")
                     saved_docs = [source_documents[0]]
                     # 根据相对分数来过滤文档块
                     for doc in source_documents[1:]:
-                        debug_logger.info(f"rerank doc score: {doc.metadata['score']}")
-                        relative_difference = (saved_docs[0].metadata['score'] - doc.metadata['score']) / saved_docs[0].metadata['score']
+                        debug_logger.info(
+                            f"rerank doc score: {doc.metadata['score']}")
+                        relative_difference = (
+                            saved_docs[0].metadata['score'] - doc.metadata['score']) / saved_docs[0].metadata['score']
                         if relative_difference > 0.5:
                             break
                         else:
                             saved_docs.append(doc)
                     source_documents = saved_docs
-                    debug_logger.info(f"rerank step3 num: {len(source_documents)}")
+                    debug_logger.info(
+                        f"rerank step3 num: {len(source_documents)}")
             except Exception as e:
                 time_record['rerank'] = 0.0
-                debug_logger.error(f"query {query}: kb_ids: {kb_ids}, rerank error: {traceback.format_exc()}")
+                debug_logger.error(
+                    f"query {query}: kb_ids: {kb_ids}, rerank error: {traceback.format_exc()}")
 
         # es检索+milvus检索结果最多可能是2k
         source_documents = source_documents[:top_k]
@@ -407,7 +491,7 @@ class QAHandler:
         # TODO: 不知道这个在rerank里什么作用
         # for doc in source_documents:
         #     doc.page_content = re.sub(r'^\[headers]\(.*?\)\n', '', doc.page_content)
-    
+
         # 这里是处理FAQ的逻辑，后续在开发
         # high_score_faq_documents = [doc for doc in source_documents if
         #                             doc.metadata['file_name'].endswith('.faq') and doc.metadata['score'] >= 0.9]
@@ -440,12 +524,14 @@ class QAHandler:
                 # escaped_custom_prompt = custom_prompt.replace('{', '{{').replace('}', '}}')
                 # prompt_template = CUSTOM_PROMPT_TEMPLATE.format(custom_prompt=escaped_custom_prompt)
                 # 将自定义提示插入到预定义的自定义提示模板中
-                prompt_template = CUSTOM_PROMPT_TEMPLATE.replace("{{custom_prompt}}", custom_prompt)
+                prompt_template = CUSTOM_PROMPT_TEMPLATE.replace(
+                    "{{custom_prompt}}", custom_prompt)
             else:
                 # 否则使用系统默认提示
                 # 首先在系统提示中替换日期和时间
                 # system_prompt = SYSTEM.format(today_date=today, current_time=now)
-                system_prompt = SYSTEM.replace("{{today_date}}", today).replace("{{current_time}}", now)
+                system_prompt = SYSTEM.replace(
+                    "{{today_date}}", today).replace("{{current_time}}", now)
                 # prompt_template = PROMPT_TEMPLATE.format(system=system_prompt, instructions=INSTRUCTIONS)
                 # 然后构建完整的提示模板
                 prompt_template = PROMPT_TEMPLATE.replace("{{system}}", system_prompt).replace("{{instructions}}",
@@ -461,7 +547,8 @@ class QAHandler:
             if len(retrieval_documents) < len(source_documents):
                 # 重新处理后文档数量减少，说明由于tokens不足而被裁切
                 if len(retrieval_documents) == 0:  # 说明被裁切后文档数量为0
-                    debug_logger.error(f"limited_token_nums: {limited_token_nums} < {web_chunk_size}!")
+                    debug_logger.error(
+                        f"limited_token_nums: {limited_token_nums} < {web_chunk_size}!")
                     res = (
                         f"抱歉，由于留给相关文档使用的token数量不足(docs_available_token_nums: {limited_token_nums} < 文本分片大小: {web_chunk_size})，"
                         f"\n无法保证回答质量，请在模型配置中提高【总Token数量】或减少【输出Tokens数量】或减少【上下文消息数量】再继续提问。"
@@ -484,7 +571,8 @@ class QAHandler:
             for doc in source_documents:
                 if doc.metadata.get('images', []):
                     total_images_number += len(doc.metadata['images'])
-                    doc.page_content = replace_image_references(doc.page_content, doc.metadata['file_id'])
+                    doc.page_content = replace_image_references(
+                        doc.page_content, doc.metadata['file_id'])
             debug_logger.info(f"total_images_number: {total_images_number}")
 
             t2 = time.perf_counter()
@@ -539,30 +627,34 @@ class QAHandler:
                         "source_documents": source_documents}
             # 记录token和耗时等信息
             time_record['prompt_tokens'] = prompt_tokens if prompt_tokens != 0 else est_prompt_tokens
-            time_record['completion_tokens'] = completion_tokens if completion_tokens != 0 else num_tokens(acc_resp)
+            time_record['completion_tokens'] = completion_tokens if completion_tokens != 0 else num_tokens(
+                acc_resp)
             time_record['total_tokens'] = total_tokens if total_tokens != 0 else time_record['prompt_tokens'] + \
-                                                                                 time_record['completion_tokens']
+                time_record['completion_tokens']
             # 记录第一次返回的时间
             if has_first_return is False:
                 first_return_time = time.perf_counter()
                 has_first_return = True
-                time_record['llm_first_return'] = round(first_return_time - t1, 2)
+                time_record['llm_first_return'] = round(
+                    first_return_time - t1, 2)
             # 处理流式输出
             if resp[6:].startswith("[DONE]"):
                 if extra_msg is not None:
                     msg_response = {"query": query,
-                                "prompt": prompt,
-                                "result": f"data: {json.dumps({'answer': extra_msg}, ensure_ascii=False)}",
-                                "condense_question": condense_question,
-                                "retrieval_documents": retrieval_documents,
-                                "source_documents": source_documents}
+                                    "prompt": prompt,
+                                    "result": f"data: {json.dumps({'answer': extra_msg}, ensure_ascii=False)}",
+                                    "condense_question": condense_question,
+                                    "retrieval_documents": retrieval_documents,
+                                    "source_documents": source_documents}
                     yield msg_response, history
                 last_return_time = time.perf_counter()
-                time_record['llm_completed'] = round(last_return_time - t1, 2) - time_record['llm_first_return']
+                time_record['llm_completed'] = round(
+                    last_return_time - t1, 2) - time_record['llm_first_return']
                 history[-1][1] = acc_resp
                 # 如果有图片，需要处理回答带图的情况
-                if total_images_number != 0:  
-                    docs_with_images = [doc for doc in source_documents if doc.metadata.get('images', [])]
+                if total_images_number != 0:
+                    docs_with_images = [
+                        doc for doc in source_documents if doc.metadata.get('images', [])]
                     time1 = time.perf_counter()
                     relevant_docs = await self.calculate_relevance_optimized(
                         question=query,
@@ -580,16 +672,18 @@ class QAHandler:
                         print(f"综合得分: {doc['combined_score']:.4f}")
                         print()
                         for image in doc['document'].metadata.get('images', []):
-                            image_str = replace_image_references(image, doc['document'].metadata['file_id'])
-                            debug_logger.info(f"image_str: {image} -> {image_str}")
+                            image_str = replace_image_references(
+                                image, doc['document'].metadata['file_id'])
+                            debug_logger.info(
+                                f"image_str: {image} -> {image_str}")
                             show_images.append(image_str + '\n')
                     debug_logger.info(f"show_images: {show_images}")
-                    time_record['obtain_images'] = round(time.perf_counter() - last_return_time, 2)
+                    time_record['obtain_images'] = round(
+                        time.perf_counter() - last_return_time, 2)
                     time2 = time.perf_counter()
                     debug_logger.info(f"obtain_images time: {time2 - time1}s")
                     time_record["obtain_images_time"] = round(time2 - time1, 2)
                     if len(show_images) > 1:
                         response['show_images'] = show_images
-            # my_print(response)
-            # my_print(history)
+
             yield response, history
