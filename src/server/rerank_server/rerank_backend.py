@@ -2,7 +2,7 @@ from transformers import AutoTokenizer
 from copy import deepcopy
 from typing import List
 from src.configs.configs import LOCAL_RERANK_MAX_LENGTH, \
-    LOCAL_RERANK_BATCH, RERANK_MODEL_PATH, LOCAL_RERANK_THREADS,\
+    LOCAL_RERANK_BATCH, RERANK_MODEL_PATH, LOCAL_RERANK_THREADS, \
     LOCAL_RERANK_MODEL_PATH
 from src.utils.log_handler import debug_logger
 from src.utils.general_utils import get_time
@@ -16,6 +16,7 @@ def sigmoid(x):
     scores = 1/(1+np.exp(-x))
     scores = np.clip(1.5*(scores-0.5)+0.5, 0, 1)
     return scores
+
 
 class RerankBackend():
     def __init__(self, use_cpu: bool = False):
@@ -38,8 +39,10 @@ class RerankBackend():
             providers = ['CPUExecutionProvider']
         else:
             providers = ['CUDAExecutionProvider', 'CPUExecutionProvider']
-        self.session = onnxruntime.InferenceSession(LOCAL_RERANK_MODEL_PATH, sess_options, providers=providers)
+        self.session = onnxruntime.InferenceSession(
+            LOCAL_RERANK_MODEL_PATH, sess_options, providers=providers)
     # 推理
+
     def inference(self, batch):
         # 准备输入数据，准备ONNX模型输入
         print("开始推理......")
@@ -60,7 +63,7 @@ class RerankBackend():
         # print("logits shape: ", result[0].shape)
         sigmoid_scores = sigmoid(np.array(result[0]))
         # 5. 整理输出格式，转换为一维
-        return sigmoid_scores.reshape(-1).tolist() 
+        return sigmoid_scores.reshape(-1).tolist()
 
     def merge_inputs(self, chunk1_raw, chunk2):
         chunk1 = deepcopy(chunk1_raw)
@@ -79,18 +82,22 @@ class RerankBackend():
 
         if 'token_type_ids' in chunk1:
             # 为 chunk2 和两个分隔符添加 token_type_ids
-            token_type_ids = [1 for _ in range(len(chunk2['token_type_ids']) + 2)]
+            token_type_ids = [1 for _ in range(
+                len(chunk2['token_type_ids']) + 2)]
             chunk1['token_type_ids'].extend(token_type_ids)
 
         return chunk1
     # 处理长文本重排序的预处理函数，将query和passages转换为模型可以处理的格式。
+
     def tokenize_preproc(self,
                          query: str,
                          passages: List[str]):
         # 先对query进行编码
-        query_inputs = self._tokenizer.encode_plus(query, truncation=False, padding=False)
+        query_inputs = self._tokenizer.encode_plus(
+            query, truncation=False, padding=False)
         # 计算passage最大长度，减2是因为添加了两个分隔符
-        max_passage_inputs_length = self.max_length - len(query_inputs['input_ids']) - 2 
+        max_passage_inputs_length = self.max_length - \
+            len(query_inputs['input_ids']) - 2
         # 例如：
         # self.max_length = 512
         # query长度 = 30
@@ -98,7 +105,8 @@ class RerankBackend():
         assert max_passage_inputs_length > 10
         # 计算重叠token数
         # 防止重叠太大，最多是passage最大长度的2/7
-        overlap_tokens = min(self.overlap_tokens, max_passage_inputs_length * 2 // 7)
+        overlap_tokens = min(self.overlap_tokens,
+                             max_passage_inputs_length * 2 // 7)
 
         # 组[query, passage]对
         merge_inputs = []
@@ -114,7 +122,8 @@ class RerankBackend():
                 if passage_inputs['attention_mask'] is None or len(passage_inputs['attention_mask']) == 0:
                     continue
                 # 直接合并query和passage
-                qp_merge_inputs = self.merge_inputs(query_inputs, passage_inputs)
+                qp_merge_inputs = self.merge_inputs(
+                    query_inputs, passage_inputs)
                 merge_inputs.append(qp_merge_inputs)
                 # print("query ids: ",query_inputs)
                 # print("passage ids: ",passage_inputs)
@@ -123,17 +132,19 @@ class RerankBackend():
                 # 记录原始passage的索引，排序用
                 merge_inputs_idxs.append(pid)
             else:
-            # 当passage过长时，需要分段处理
+                # 当passage过长时，需要分段处理
                 start_id = 0
                 while start_id < passage_inputs_length:
                     # 切分passage
                     end_id = start_id + max_passage_inputs_length
                     # 提取子段
-                    sub_passage_inputs = {k: v[start_id:end_id] for k, v in passage_inputs.items()}
+                    sub_passage_inputs = {k: v[start_id:end_id]
+                                          for k, v in passage_inputs.items()}
                     # 计算下一段的开始位置（考虑重叠）
                     start_id = end_id - overlap_tokens if end_id < passage_inputs_length else end_id
                     # query和子段合并
-                    qp_merge_inputs = self.merge_inputs(query_inputs, sub_passage_inputs)
+                    qp_merge_inputs = self.merge_inputs(
+                        query_inputs, sub_passage_inputs)
                     # 放入合并后的
                     merge_inputs.append(qp_merge_inputs)
                     # 记录原始索引
@@ -143,7 +154,8 @@ class RerankBackend():
 
     @get_time
     def get_rerank(self, query: str, passages: List[str]):
-        tot_batches, merge_inputs_idxs_sort = self.tokenize_preproc(query, passages)
+        tot_batches, merge_inputs_idxs_sort = self.tokenize_preproc(
+            query, passages)
 
         tot_scores = []
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.workers) as executor:
