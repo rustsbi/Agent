@@ -1,0 +1,121 @@
+category,question,answer
+基础概念,RustSBI 是什么？,RustSBI 是一个用 Rust 编写的 RISC-V Supervisor Binary Interface 实现。
+基础概念,Supervisor Binary Interface 是什么？,SBI 是一种标准接口，用于在 RISC-V 架构中协调操作系统与固件之间的交互。
+基础概念,什么是 CSR？,CSR 是控制和状态寄存器，用于控制处理器行为。
+基础概念,什么是 trap？,trap 是处理器在运行时遇到异常或中断时产生的一种转移机制。
+基础概念,什么是 hart？,hart 是 RISC-V 中的硬件线程，类似于一个逻辑 CPU。
+基础概念,什么是 sbi call？,sbi call 是操作系统调用 SBI 接口的一种方式，通常通过 `ecall` 指令触发。
+基础概念,什么是 OpenSBI？,OpenSBI 是官方 C 语言实现的 SBI 框架，RustSBI 是其 Rust 语言的轻量替代方案。
+基础概念,RustSBI 与 OpenSBI 的区别？,RustSBI 使用 Rust 编写，更适合嵌入式 Rust 生态；OpenSBI 使用 C 编写，功能更全。
+基础概念,RustSBI 是开源的吗？,是的，RustSBI 使用 MIT 或 Apache 2.0 双许可证开源。
+trap 机制,RustSBI 如何处理 trap？,RustSBI 提供 trap handler，用于处理中断、系统调用等异常。
+trap 机制,trap 和 interrupt 有什么区别？,trap 通常指同步异常，如系统调用；interrupt 指异步事件，如定时器中断。
+trap 机制,如何注册 trap handler？,通过设置 mtvec 寄存器指向 handler 函数地址。
+trap 机制,RustSBI 如何处理中断返回？,处理完成后跳转至 mepc，并通过 mstatus 恢复上下文。
+trap 机制,trap 触发时保存哪些信息？,会自动保存 mepc、mcause、mtval、mstatus 等寄存器状态。
+trap 机制,如何手动触发一个 trap？,可以使用 `ecall` 指令触发一个环境调用 trap。
+SBI 接口,RustSBI 支持哪些 SBI 接口？,RustSBI 支持 legacy 接口，如 set_timer、console_putchar，也支持部分扩展。
+SBI 接口,如何实现自己的 SBI 扩展？,实现 SBI trait 并注册到 `rustsbi::set_implementation` 中。
+SBI 接口,如何触发 set_timer？,通过设置 a7 寄存器为 0x00，并调用 ecall。
+SBI 接口,console_putchar 对应的编号是多少？,SBI legacy 中编号为 1。
+SBI 接口,如何实现 sbi call？,用内联汇编设置参数至 a0-a7，然后执行 ecall 指令。
+SBI 接口,RustSBI 中 a0-a7 各代表什么？,a0-a6 为参数/返回值，a7 为功能号。
+内存管理,RustSBI 是否管理内存？,RustSBI 本身不管理内存，但可通过扩展支持内存分配。
+内存管理,如何为每个 hart 设置栈？,通常为每个 hart 分配独立栈地址，配置 mscratch 寄存器。
+内存管理,mepc 有什么作用？,mepc 保存 trap 发生时的程序计数器，用于返回。
+内存管理,如何切换页表？,通过写 satp 寄存器实现页表切换。
+内存管理,什么是内存对齐？,内存对齐是指数据在内存中按固定边界存放，提高访问效率。
+内存管理,访问非法地址会发生什么？,触发 load/store page fault 异常。
+初始化与多核支持,如何初始化 RustSBI？,设置 trap handler、console、timer、IPI 等组件。
+初始化与多核支持,如何支持多核？,为每个 hart 设置独立初始化流程，并支持 IPI。
+初始化与多核支持,如何设置 mtvec？,通过写 mtvec 寄存器设置 trap handler 入口地址。
+初始化与多核支持,启动 hart 的方法有哪些？,使用 sbi_send_ipi 或 platform specific 的跳转方式启动 hart。
+初始化与多核支持,如何在裸机中判断当前 hartid？,通过读取 mhartid CSR。
+其他错误与调试,数组越界是什么意思？,访问了数组中不存在的索引，比如数组长度为 3，却访问了索引 5。
+其他错误与调试,栈溢出会有什么后果？,可能覆盖程序数据或触发 trap，导致系统崩溃。
+其他错误与调试,panic 的信息如何输出？,需要实现 `#[panic_handler]` 并调用 console 输出信息。
+其他错误与调试,如何查看当前中断状态？,读取 mstatus 和 mie CSR 中的相应位。
+其他错误与调试,怎么禁用中断？,清除 mstatus 中的 MIE 位即可禁用中断。
+其他错误与调试,Rust 中 unsafe 是什么意思？,表示该代码段绕过了 Rust 的安全检查，可能引发未定义行为。
+SBI 接口,console_putchar 对应的编号是多少？,SBI legacy 中编号为 1。
+其他错误与调试,怎么禁用中断？,清除 mstatus 中的 MIE 位即可禁用中断。
+内存管理,如何为每个 hart 设置栈？,通常为每个 hart 分配独立栈地址，配置 mscratch 寄存器。
+内存管理,什么是内存对齐？,内存对齐是指数据在内存中按固定边界存放，提高访问效率。
+SBI 接口,如何触发 set_timer？,通过设置 a7 寄存器为 0x00，并调用 ecall。
+基础概念,什么是 OpenSBI？,OpenSBI 是官方 C 语言实现的 SBI 框架，RustSBI 是其 Rust 语言的轻量替代方案。
+其他错误与调试,Rust 中 unsafe 是什么意思？,表示该代码段绕过了 Rust 的安全检查，可能引发未定义行为。
+基础概念,什么是 sbi call？,sbi call 是操作系统调用 SBI 接口的一种方式，通常通过 `ecall` 指令触发。
+内存管理,什么是内存对齐？,内存对齐是指数据在内存中按固定边界存放，提高访问效率。
+基础概念,什么是 hart？,hart 是 RISC-V 中的硬件线程，类似于一个逻辑 CPU。
+初始化与多核支持,如何支持多核？,为每个 hart 设置独立初始化流程，并支持 IPI。
+trap 机制,trap 触发时保存哪些信息？,会自动保存 mepc、mcause、mtval、mstatus 等寄存器状态。
+初始化与多核支持,启动 hart 的方法有哪些？,使用 sbi_send_ipi 或 platform specific 的跳转方式启动 hart。
+trap 机制,如何手动触发一个 trap？,可以使用 `ecall` 指令触发一个环境调用 trap。
+基础概念,RustSBI 是什么？,RustSBI 是一个用 Rust 编写的 RISC-V Supervisor Binary Interface 实现。
+SBI 接口,RustSBI 支持哪些 SBI 接口？,RustSBI 支持 legacy 接口，如 set_timer、console_putchar，也支持部分扩展。
+其他错误与调试,panic 的信息如何输出？,需要实现 `#[panic_handler]` 并调用 console 输出信息。
+SBI 接口,如何触发 set_timer？,通过设置 a7 寄存器为 0x00，并调用 ecall。
+基础概念,什么是 OpenSBI？,OpenSBI 是官方 C 语言实现的 SBI 框架，RustSBI 是其 Rust 语言的轻量替代方案。
+基础概念,什么是 CSR？,CSR 是控制和状态寄存器，用于控制处理器行为。
+内存管理,RustSBI 是否管理内存？,RustSBI 本身不管理内存，但可通过扩展支持内存分配。
+trap 机制,trap 和 interrupt 有什么区别？,trap 通常指同步异常，如系统调用；interrupt 指异步事件，如定时器中断。
+trap 机制,trap 触发时保存哪些信息？,会自动保存 mepc、mcause、mtval、mstatus 等寄存器状态。
+初始化与多核支持,如何在裸机中判断当前 hartid？,通过读取 mhartid CSR。
+SBI 接口,console_putchar 对应的编号是多少？,SBI legacy 中编号为 1。
+其他错误与调试,panic 的信息如何输出？,需要实现 `#[panic_handler]` 并调用 console 输出信息。
+trap 机制,trap 触发时保存哪些信息？,会自动保存 mepc、mcause、mtval、mstatus 等寄存器状态。
+trap 机制,RustSBI 如何处理中断返回？,处理完成后跳转至 mepc，并通过 mstatus 恢复上下文。
+trap 机制,如何手动触发一个 trap？,可以使用 `ecall` 指令触发一个环境调用 trap。
+SBI 接口,console_putchar 对应的编号是多少？,SBI legacy 中编号为 1。
+SBI 接口,如何实现 sbi call？,用内联汇编设置参数至 a0-a7，然后执行 ecall 指令。
+其他错误与调试,如何查看当前中断状态？,读取 mstatus 和 mie CSR 中的相应位。
+基础概念,Supervisor Binary Interface 是什么？,SBI 是一种标准接口，用于在 RISC-V 架构中协调操作系统与固件之间的交互。
+SBI 接口,如何实现 sbi call？,用内联汇编设置参数至 a0-a7，然后执行 ecall 指令。
+trap 机制,RustSBI 如何处理中断返回？,处理完成后跳转至 mepc，并通过 mstatus 恢复上下文。
+其他错误与调试,怎么禁用中断？,清除 mstatus 中的 MIE 位即可禁用中断。
+trap 机制,trap 触发时保存哪些信息？,会自动保存 mepc、mcause、mtval、mstatus 等寄存器状态。
+初始化与多核支持,启动 hart 的方法有哪些？,使用 sbi_send_ipi 或 platform specific 的跳转方式启动 hart。
+内存管理,什么是内存对齐？,内存对齐是指数据在内存中按固定边界存放，提高访问效率。
+基础概念,什么是 hart？,hart 是 RISC-V 中的硬件线程，类似于一个逻辑 CPU。
+基础概念,什么是 sbi call？,sbi call 是操作系统调用 SBI 接口的一种方式，通常通过 `ecall` 指令触发。
+基础概念,RustSBI 是什么？,RustSBI 是一个用 Rust 编写的 RISC-V Supervisor Binary Interface 实现。
+初始化与多核支持,启动 hart 的方法有哪些？,使用 sbi_send_ipi 或 platform specific 的跳转方式启动 hart。
+基础概念,Supervisor Binary Interface 是什么？,SBI 是一种标准接口，用于在 RISC-V 架构中协调操作系统与固件之间的交互。
+初始化与多核支持,启动 hart 的方法有哪些？,使用 sbi_send_ipi 或 platform specific 的跳转方式启动 hart。
+基础概念,什么是 sbi call？,sbi call 是操作系统调用 SBI 接口的一种方式，通常通过 `ecall` 指令触发。
+trap 机制,RustSBI 如何处理 trap？,RustSBI 提供 trap handler，用于处理中断、系统调用等异常。
+trap 机制,trap 触发时保存哪些信息？,会自动保存 mepc、mcause、mtval、mstatus 等寄存器状态。
+内存管理,如何切换页表？,通过写 satp 寄存器实现页表切换。
+SBI 接口,console_putchar 对应的编号是多少？,SBI legacy 中编号为 1。
+trap 机制,trap 和 interrupt 有什么区别？,trap 通常指同步异常，如系统调用；interrupt 指异步事件，如定时器中断。
+其他错误与调试,panic 的信息如何输出？,需要实现 `#[panic_handler]` 并调用 console 输出信息。
+其他错误与调试,panic 的信息如何输出？,需要实现 `#[panic_handler]` 并调用 console 输出信息。
+其他错误与调试,Rust 中 unsafe 是什么意思？,表示该代码段绕过了 Rust 的安全检查，可能引发未定义行为。
+trap 机制,RustSBI 如何处理中断返回？,处理完成后跳转至 mepc，并通过 mstatus 恢复上下文。
+其他错误与调试,如何查看当前中断状态？,读取 mstatus 和 mie CSR 中的相应位。
+SBI 接口,如何实现 sbi call？,用内联汇编设置参数至 a0-a7，然后执行 ecall 指令。
+trap 机制,RustSBI 如何处理 trap？,RustSBI 提供 trap handler，用于处理中断、系统调用等异常。
+初始化与多核支持,如何在裸机中判断当前 hartid？,通过读取 mhartid CSR。
+trap 机制,如何手动触发一个 trap？,可以使用 `ecall` 指令触发一个环境调用 trap。
+SBI 接口,console_putchar 对应的编号是多少？,SBI legacy 中编号为 1。
+SBI 接口,console_putchar 对应的编号是多少？,SBI legacy 中编号为 1。
+SBI 接口,RustSBI 支持哪些 SBI 接口？,RustSBI 支持 legacy 接口，如 set_timer、console_putchar，也支持部分扩展。
+内存管理,mepc 有什么作用？,mepc 保存 trap 发生时的程序计数器，用于返回。
+基础概念,什么是 OpenSBI？,OpenSBI 是官方 C 语言实现的 SBI 框架，RustSBI 是其 Rust 语言的轻量替代方案。
+内存管理,RustSBI 是否管理内存？,RustSBI 本身不管理内存，但可通过扩展支持内存分配。
+基础概念,什么是 trap？,trap 是处理器在运行时遇到异常或中断时产生的一种转移机制。
+其他错误与调试,Rust 中 unsafe 是什么意思？,表示该代码段绕过了 Rust 的安全检查，可能引发未定义行为。
+其他错误与调试,数组越界是什么意思？,访问了数组中不存在的索引，比如数组长度为 3，却访问了索引 5。
+基础概念,什么是 trap？,trap 是处理器在运行时遇到异常或中断时产生的一种转移机制。
+其他错误与调试,栈溢出会有什么后果？,可能覆盖程序数据或触发 trap，导致系统崩溃。
+SBI 接口,如何实现 sbi call？,用内联汇编设置参数至 a0-a7，然后执行 ecall 指令。
+内存管理,什么是内存对齐？,内存对齐是指数据在内存中按固定边界存放，提高访问效率。
+基础概念,RustSBI 是开源的吗？,是的，RustSBI 使用 MIT 或 Apache 2.0 双许可证开源。
+基础概念,什么是 sbi call？,sbi call 是操作系统调用 SBI 接口的一种方式，通常通过 `ecall` 指令触发。
+SBI 接口,如何实现 sbi call？,用内联汇编设置参数至 a0-a7，然后执行 ecall 指令。
+trap 机制,trap 和 interrupt 有什么区别？,trap 通常指同步异常，如系统调用；interrupt 指异步事件，如定时器中断。
+trap 机制,RustSBI 如何处理 trap？,RustSBI 提供 trap handler，用于处理中断、系统调用等异常。
+trap 机制,RustSBI 如何处理 trap？,RustSBI 提供 trap handler，用于处理中断、系统调用等异常。
+基础概念,RustSBI 是什么？,RustSBI 是一个用 Rust 编写的 RISC-V Supervisor Binary Interface 实现。
+内存管理,什么是内存对齐？,内存对齐是指数据在内存中按固定边界存放，提高访问效率。
+其他错误与调试,如何查看当前中断状态？,读取 mstatus 和 mie CSR 中的相应位。
