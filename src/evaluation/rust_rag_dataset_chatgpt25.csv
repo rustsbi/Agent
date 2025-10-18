@@ -1,0 +1,26 @@
+﻿id,question,context
+1,What is the Box type used for in Rust?,"The Box type is a smart pointer type. There can only be one owner of a Box, and the owner can decide to mutate the contents, which live on the heap."
+2,How does Rc differ from Box in Rust?,The Rc type is a non-threadsafe reference-counted pointer type intended for sharing memory within a thread.
+3,What is the difference between Rc and Arc?,The Arc type is the threadsafe equivalent of the Rc type. It provides the same functionality but requires the contained type T to be shareable.
+4,Which Rust type is used for heap allocation of arrays?,"Vec is a contiguous growable array type with heap-allocated contents, written Vec<T>."
+5,What does the alloc crate provide?,This library provides smart pointers and collections for managing heap-allocated values.
+6,What is the Rust Core Library?,The Rust Core Library is the dependency-free foundation of The Rust Standard Library. It defines the intrinsic and primitive building blocks of all Rust code.
+7,Does the core library provide I/O or concurrency?,"The core library is minimal: it isn’t even aware of heap allocation, nor does it provide concurrency or I/O."
+8,What is the boolean type in Rust?,The boolean type is represented as bool.
+9,What function handles panics in the core library?,"This function takes one argument, a &panic::PanicInfo. Consumers of the core library must define it with #[panic_handler]."
+10,What does the Option type represent?,Option represents optional values and is used for values that may or may not be present.
+11,What is the purpose of the proc_macro crate?,A support library for macro authors when defining new macros. It provides the types consumed in the interfaces of procedurally defined macro definitions such as function-like macros #[proc_macro].
+12,What does the TokenStream type represent?,"TokenStream represents an abstract stream of tokens, or, more specifically, a sequence of token trees."
+13,What does the quote! macro do?,The quote! macro accepts arbitrary tokens and expands into a TokenStream describing the input.
+14,What does the Ident struct represent in proc_macro?,Ident represents an identifier.
+15,What does the Span type represent in proc_macro?,"Span represents a region of source code, along with macro expansion information."
+16,What is the Rust Standard Library?,"The Rust Standard Library is the foundation of portable Rust software, providing core types, macros, I/O, multithreading, and more."
+17,What does the Result type represent in Rust?,"The Result<T, E> type is used for error handling and represents either success (Ok) or failure (Err)."
+18,What is the Rust Prelude?,"The Rust Prelude is a small collection of items, mostly traits, that are imported into every module of every crate by default."
+19,What does the collections module provide?,"The collections module defines maps, sets, linked lists and other typical collection types, including HashMap<K, V>."
+20,What types are used for contiguous memory in Rust?,"Vec<T>, [T; N], and [T] are the three common ways to deal with contiguous regions of memory."
+21,What is the purpose of the test crate?,Support code for rustc’s built-in unit-test and micro-benchmarking framework.
+22,What does the Bencher struct represent?,Bencher is used for benchmarking in Rust's test framework.
+23,What is the black_box function used for?,The black_box function is used in benchmarks to prevent compiler optimizations on values.
+24,What does the assert_test_result function do?,It is invoked when unit tests terminate. Returns Result::Err if the test is considered a failure.
+25,What does the run_tests_console function do?,It runs provided tests reporting process and results to the stdout.
